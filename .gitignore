@@ -35,6 +35,6 @@ data/outputs/*
 build/
 dist/
 *.dmg
-colab_training/*.zip
-tool/packaging/_build/
-tool/reports/
+training_lab/colab_resnet18/*.zip
+desktop_tool/packaging/_build/
+desktop_tool/reports/

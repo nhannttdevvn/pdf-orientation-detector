@@ -6,8 +6,8 @@ from typing import Any, Dict
 
 import pytest
 
-from pdf_inspector.core.config import SAMPLES_DIR
-from scripts.generate_samples import generate_all_sample_pdfs
+from ai_engine.core.config import SAMPLES_DIR
+from benchmarks.generators.generate_samples import generate_all_sample_pdfs
 
 
 @pytest.fixture(scope="session", autouse=True)

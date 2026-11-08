@@ -1,132 +1,125 @@
-# PDF Quality Inspection — Multi-Defect Architecture (Orientation, Stripe & Page Boundary Detector — Phase 3)
+# PDF Scan Quality Inspector — Enterprise 5-Zone Document AI Architecture
 
-Hệ thống kiểm tra chất lượng tài liệu PDF scan chạy **offline trên macOS / Linux / Docker**, được thiết kế theo kiến trúc **Multi-Defect PDF Quality Inspection** (`DocumentPipeline`, `DetectorRegistry`, `Shared PageContext`, `UnifiedQualityEngine`).
-
-- **Các Detector đang hoạt động (`ACTIVE / ENABLED`):**
-  1. **Orientation Detector (`src/pdf_inspector/detectors/orientation/` — Phase 1):** Phát hiện trang bị xoay `90°`, `180°`, `270°` bằng **Tesseract OSD (`--psm 0`)** kết hợp tiền xử lý **OpenCV (`Median Blur` + `CLAHE` + `Morphological Text-Line Strip Verification`)** và tự động xoay chỉnh sửa metadata `/Rotate` không làm giảm chất lượng PDF.
-  2. **Stripe Detector (`src/pdf_inspector/detectors/defects/` — Phase 2):** Tự động phát hiện các vệt sọc máy scan (`VERTICAL`, `HORIZONTAL`, `DIAGONAL`, `BAND`) bằng sự kết hợp của 3 kỹ thuật Computer Vision (**Morphological Operations**, **Probabilistic Hough Line Transform `HoughLinesP`**, **Projection Profile / Intensity Analysis**) kèm bộ lọc False Positive (`StripeValidator`) và hiển thị lớp phủ trực quan (`render_stripe_overlay`).
-  3. **Page Boundary & Mixed-Page Detector (`src/pdf_inspector/detectors/boundary/` — Phase 3):** Tự động phát hiện các lỗi ranh giới trang và lẫn trang khi scan:
-     - `MIXED_PAGE`: Một trang PDF chứa đồng thời phần cuối của trang A và phần đầu của trang B (hoặc 2 tờ giấy bị kéo chồng trong khay ADF).
-     - `SPLIT_PAGE`: Một trang tài liệu vật lý bị chia tách thành 2 trang PDF liên tiếp (`N` và `N+1`).
-     - `CONTENT_OVERLAP`: Hai trang liên tiếp bị trùng lặp dải nội dung ở vùng biên.
-     - `CONTENT_TRUNCATED`: Nội dung văn bản ở sát mép trang (`TOP`, `BOTTOM`, `LEFT`, `RIGHT`) bị cắt cụt vật lý (`MISSING_CONTENT` / `REQUIRES_RESCAN`).
-     - `PAGE_BOUNDARY_SUSPECTED`: Ranh giới trang nghi vấn cần người dùng kiểm tra thủ công.
-     - Hỗ trợ **Xem trước Tách/Ghép trang an toàn (`PageReconstructor`)** không cắt ngang chữ (`crosses_text = False`) và chỉ xuất file `reconstructed.pdf` (kèm hồ sơ truy vết `reconstruction_provenance.json`) khi người dùng chủ động xác nhận (`user_confirmed = True`).
+Hệ thống kiểm tra chất lượng tài liệu PDF scan và nhận diện dấu độ mật chạy **100% offline trên macOS / Linux / Docker**, được tổ chức theo kiến trúc **5 phân khu chuyên biệt** (`ai_engine/`, `backend/`, `frontend/`, `training_lab/`, `benchmarks/`) lấy cảm hứng từ mô hình tách tầng `AI – Backend – Frontend – Evaluation` và mở rộng chiều sâu cho bài toán xử lý hồ sơ số hóa.
 
 ---
 
-## 1. Cấu trúc Thư mục Dự án
+## 1. Kiến trúc 5 Phân khu & Cấu trúc Thư mục
 
 ```text
 pdf-orientation-detector/
 │
-├── src/
-│   └── pdf_inspector/                       # Package chính (src layout — import bằng `pdf_inspector.*`)
-│       ├── __init__.py
-│       ├── __main__.py                      # Cho phép chạy `python -m pdf_inspector`
-│       ├── cli.py                           # Entry point giao diện dòng lệnh (CLI)
-│       ├── core/                            # Cấu hình (env-overridable), logging, exceptions
-│       │   ├── config.py
-│       │   ├── logging_config.py
-│       │   └── exceptions.py
-│       ├── models/                          # Schema dữ liệu, PageContext và kết quả đa lỗi
-│       │   ├── context.py                   # PageContext, CoordinateTransform, CoordinateSpace
-│       │   ├── schemas.py                   # DefectResult, PageDecision, PipelineResult...
-│       │   └── boundary_schemas.py          # BoundaryDefectCode, BoundaryStatus, BoundaryCandidate...
-│       ├── processing/                      # Đọc PDF, render trang, tiền xử lý ảnh & tái tạo trang
-│       │   ├── pdf_loader.py                # PDFLoader & khởi tạo PageContext
-│       │   ├── page_renderer.py             # Render trang PDF sang NumPy array
-│       │   ├── image_preprocessor.py        # Tiền xử lý OpenCV & trích xuất dòng chữ
-│       │   └── page_reconstructor.py        # Xem trước tách/ghép & xuất PDF tái tạo có xác nhận
-│       ├── detectors/                       # Các thuật toán nhận diện lỗi & DetectorRegistry
-│       │   ├── base_detector.py             # BaseDetector, PageLevelDetector, DocumentLevelDetector
-│       │   ├── registry.py                  # DetectorRegistry (AVAILABLE/ENABLED/DISABLED/NOT_IMPLEMENTED)
-│       │   ├── tesseract_detector.py        # Re-export tương thích ngược
-│       │   ├── orientation/                 # Orientation Detector [Phase 1]
-│       │   ├── defects/                     # Stripe Defect Detector [Phase 2]
-│       │   ├── boundary/                    # Page Boundary & Mixed-Page Detector [Phase 3]
-│       │   └── secret/                      # Secret Marking Detector [Phase 4]
-│       │       └── templates/               # Ảnh mẫu dấu độ mật (đóng gói kèm package-data)
-│       ├── pipeline/
-│       │   └── document_pipeline.py         # DocumentPipeline (Multi-Defect Orchestrator)
-│       ├── services/                        # Nghiệp vụ: quyết định, chỉnh sửa, báo cáo, secret scan
-│       │   ├── orientation_service.py       # UnifiedQualityEngine (DecisionEngine)
-│       │   ├── correction_service.py        # RotationCorrector (PDFCorrector)
-│       │   ├── boundary_inspection_service.py
-│       │   ├── secret_scan_service.py
-│       │   ├── report_service.py            # ReportGenerator (JSON & CSV)
-│       │   └── pdf_service.py               # Re-export PDFLoader tương thích ngược
-│       ├── ui/                              # Giao diện Web Streamlit
-│       │   ├── streamlit_app.py
-│       │   ├── state_manager.py
-│       │   ├── styles.py
-│       │   └── components/                  # header, sidebar, upload, summary, preview, results, secret tab...
-│       └── utils/
-│           └── file_utils.py
+├── ai_engine/                               # 1. LÕI AI & COMPUTER VISION (Độc lập hoàn toàn với UI)
+│   ├── core/                                # Cấu hình trung tâm, hằng số, logging, exceptions
+│   │   ├── config.py
+│   │   ├── exceptions.py
+│   │   └── logging_config.py
+│   ├── preprocessing/                       # Đọc PDF, render ảnh trang & tiền xử lý OpenCV
+│   │   ├── pdf_loader.py                    # PDFLoader & khởi tạo PageContext
+│   │   ├── page_renderer.py                 # Render trang PDF sang mảng NumPy
+│   │   └── image_preprocessor.py            # Median Blur, CLAHE, trích xuất dải dòng chữ
+│   ├── detectors/                           # 4 nhóm thuật toán phát hiện chuyên biệt & Registry
+│   │   ├── base_detector.py                 # BaseDetector, PageLevelDetector, DocumentLevelDetector
+│   │   ├── registry.py                      # DetectorRegistry quản lý vòng đời detector
+│   │   ├── orientation/                     # [Task 1] Phát hiện trang xoay 90°/180°/270° (OSD + Heuristic)
+│   │   ├── defects/                         # [Task 2] Phát hiện sọc scan dọc/ngang/chéo & lọc đường biểu mẫu
+│   │   ├── boundary/                        # [Task 3] Phát hiện lẫn trang, tách trang, cắt cụt mép
+│   │   └── secret/                          # [Task 4] Nhận diện dấu MẬT / TỐI MẬT / TUYỆT MẬT / GIẢI MẬT
+│   │       └── templates/                   # Bộ mẫu dấu chuẩn 200 DPI
+│   ├── reconstruction/                      # Tách/ghép & phục dựng trang bị lẫn có xác nhận
+│   │   └── page_reconstructor.py
+│   └── pipelines/                           # Điều phối đa detector trên Shared PageContext
+│       └── document_pipeline.py
 │
-├── tests/                                   # Pytest (pythonpath = src + gốc dự án, cấu hình trong pyproject.toml)
-├── scripts/                                 # Sinh dữ liệu mẫu (generate_*) & chạy benchmark (evaluate_*)
-├── data/
-│   ├── samples/                             # PDF mẫu + ground truth (orientation, stripe, horizontal stripe, boundary)
-│   ├── uploads/                             # File người dùng upload qua UI (runtime, không commit)
-│   └── outputs/                             # PDF đã sửa, báo cáo JSON/CSV, feedback & kết quả benchmark (runtime)
-├── docs/                                    # Kiến trúc, workflow, đặc tả detector & báo cáo benchmark
-├── logs/                                    # File log (app.log)
-├── .streamlit/config.toml                   # Theme Streamlit (đọc từ thư mục chạy lệnh)
-├── .env.example                             # Mẫu biến môi trường (copy thành .env)
+├── backend/                                 # 2. TẦNG DỊCH VỤ, SCHEMAS, REPOSITORIES & WORKERS
+│   ├── api/                                 # Giao diện dòng lệnh & cổng điều phối
+│   │   └── cli.py
+│   ├── schemas/                             # Data models, DTOs, PageContext, Boundary & Defect schemas
+│   │   ├── context.py
+│   │   ├── schemas.py
+│   │   └── boundary_schemas.py
+│   ├── services/                            # Business Logic Services
+│   │   ├── orientation_service.py           # UnifiedQualityEngine (DecisionEngine)
+│   │   ├── correction_service.py            # Xoay trang PDF bảo toàn chất lượng gốc
+│   │   ├── boundary_inspection_service.py   # Kiểm định & phục dựng trang lẫn
+│   │   ├── secret_scan_service.py           # Quét dấu độ mật tuần tự (an toàn RAM)
+│   │   ├── report_service.py                # Xuất báo cáo JSON / CSV
+│   │   └── pdf_service.py
+│   ├── repositories/                        # Tiện ích lưu trữ file, hash & quản lý tài nguyên
+│   │   └── file_utils.py
+│   └── workers/                             # Xử lý lô (Batch folder scan & xuất ZIP báo cáo)
+│       ├── batch_manager.py
+│       └── batch_export.py
+│
+├── frontend/                                # 3. GIAO DIỆN NGƯỜI DÙNG (Streamlit Web Dashboard)
+│   ├── app/                                 # Entrypoint ứng dụng Web
+│   │   └── streamlit_app.py
+│   ├── state/                               # Quản lý session state cách ly 2 chế độ & RAM cache
+│   │   └── state_manager.py
+│   ├── styles/                              # Hệ thống CSS & SVG icons chuẩn thiết kế 1534x960
+│   │   └── styles.py
+│   ├── pages/                               # Các trang chế độ làm việc độc lập
+│   │   ├── scan_quality_page.py             # Tab 1 — Kiểm tra & sửa lỗi PDF
+│   │   └── secret_detection_page.py         # Tab 2 — Kiểm tra dấu độ mật
+│   └── components/                          # Các component giao diện tái sử dụng
+│       ├── header_bar.py
+│       ├── upload_card.py
+│       ├── summary_cards.py
+│       ├── results_view.py
+│       ├── preview_panel.py
+│       ├── secret_tab_view.py
+│       ├── sidebar.py
+│       └── footer_bar.py
+│
+├── training_lab/                            # 4. KHU VỰC HUẤN LUYỆN MÔ HÌNH (Deep Learning / ResNet-18)
+│   ├── dataset_prep/                        # Kiểm toán dữ liệu (audit_dataset) & chia tập train/val/test
+│   ├── colab_resnet18/                      # Pipeline huấn luyện ResNet-18 trên Google Colab & unit tests
+│   └── checkpoints/                         # Trọng số mô hình & cấu hình ánh xạ nhãn (orientation/)
+│
+├── benchmarks/                              # 5. ĐÁNH GIÁ THỰC NGHIỆM (Generators, Evaluators & Reports)
+│   ├── generators/                          # Sinh bộ dữ liệu PDF kiểm chuẩn tự động
+│   ├── evaluators/                          # Đánh giá định lượng Precision / Recall / F1 / Latency
+│   └── reports/                             # Báo cáo kết quả thực nghiệm & huấn luyện
+│
+├── desktop_tool/                            # Công cụ Desktop đóng gói độc lập (.dmg / .exe)
+├── tests/                                   # Hệ thống kiểm thử tự động phân tầng (99 tests)
+│   ├── unit/                                # Kiểm thử đơn vị từng detector (Orientation, Stripe, Boundary, Secret)
+│   ├── integration/                         # Kiểm thử tích hợp Pipeline, Services, Reconstruction, Batch Scan
+│   └── ui/                                  # Kiểm thử giao diện 2 chế độ độc lập
+├── docs/                                    # Tài liệu kiến trúc & báo cáo kiểm toán kỹ thuật
 ├── Dockerfile
 ├── docker-compose.yml
-├── pyproject.toml                           # Metadata, dependencies, console script, cấu hình pytest
-├── requirements.txt                         # Dependencies cho Docker / cài nhanh
-└── README.md
-```
-
-Cài đặt cho phát triển (khuyến nghị — giúp import `pdf_inspector` ở mọi nơi):
-```bash
-pip install -e ".[dev]"
+├── pyproject.toml
+└── requirements.txt
 ```
 
 ---
 
-## 2. Hướng dẫn Sử dụng
+## 2. Hướng dẫn Sử dụng Nhanh
 
-### A. Chạy giao diện Web (Streamlit)
+### A. Cài đặt môi trường
 ```bash
-streamlit run src/pdf_inspector/ui/streamlit_app.py
-```
-Truy cập địa chỉ `http://localhost:8501` trên trình duyệt.
-
-### B. Chạy công cụ dòng lệnh (CLI)
-```bash
-# Quét kiểm tra chất lượng toàn diện (Orientation + Stripe + Boundary) và xuất báo cáo JSON/CSV
-python -m pdf_inspector data/samples/boundary_benchmark/15_multi_page_multi_defect.pdf --report data/outputs/report.json
-
-# Quét, tự động sửa các trang ROTATED và lưu PDF mới
-python -m pdf_inspector data/samples/06_all_four_orientations.pdf \
-  --dpi 160 \
-  --threshold 10 \
-  --auto-fix \
-  --output data/outputs/corrected.pdf \
-  --report data/outputs/orientation_report.json
+pip install -e ".[dev]"
 ```
 
-### C. Chạy kiểm thử tự động và Benchmark
+### B. Chạy giao diện Web Dashboard (2 Chế độ)
 ```bash
-# Chạy toàn bộ bộ kiểm thử (Orientation + Stripe + Boundary + Cross-Page + Reconstruction + Pipeline)
-pytest --import-mode=importlib -v
+PYTHONPATH=. streamlit run frontend/app/streamlit_app.py
+```
+Truy cập `http://localhost:8501` trên trình duyệt.
 
-# Chạy đánh giá định lượng Stripe Benchmark (Phase 2)
-python scripts/evaluate_stripe_benchmark.py
-
-# Chạy đánh giá định lượng Page Boundary Benchmark (Phase 3)
-python scripts/evaluate_boundary_benchmark.py
+### C. Chạy công cụ dòng lệnh (CLI)
+```bash
+PYTHONPATH=. python -m backend.api.cli input.pdf --auto-fix --output data/outputs/corrected.pdf --report data/outputs/report.json
 ```
 
-### D. Chạy với Docker / Docker Compose
+### D. Chạy bộ kiểm thử tự động & Benchmark
 ```bash
-# Build và khởi chạy dịch vụ qua Docker Compose
-docker compose up --build -d
+# Chạy toàn bộ kiểm thử phân tầng (Unit + Integration + UI)
+PYTHONPATH=. pytest --import-mode=importlib tests/ -q
 
-# Hoặc chạy kiểm tra CLI trực tiếp trong container
-docker run --rm pdf-orientation-detector python -m pdf_inspector data/samples/boundary_benchmark/02_two_pages_in_one_image.pdf
+# Chạy các bộ đánh giá định lượng (Benchmarks)
+PYTHONPATH=. python benchmarks/evaluators/evaluate_horizontal_stripe_benchmark.py
+PYTHONPATH=. python benchmarks/evaluators/evaluate_secret_benchmark.py
+PYTHONPATH=. python benchmarks/evaluators/evaluate_boundary_benchmark.py
 ```

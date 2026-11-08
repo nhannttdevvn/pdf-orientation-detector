@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pdf-orientation-detector"
-version = "1.0.0"
-description = "Công cụ phát hiện và chỉnh sửa hướng trang PDF scan (0°, 90°, 180°, 270°) bằng PyMuPDF, OpenCV và Tesseract OSD."
+version = "2.0.0"
+description = "Hệ thống kiểm tra chất lượng tài liệu PDF scan & nhận diện dấu độ mật theo kiến trúc 5 phân khu (AI Engine, Backend Services, Frontend Dashboard, Training Lab, Benchmarks)."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -24,18 +24,17 @@ dev = [
 ]
 
 [project.scripts]
-pdf-orientation-detector = "pdf_inspector.cli:run_cli"
+pdf-orientation-detector = "backend.api.cli:run_cli"
 
 [tool.setuptools.packages.find]
-where = ["src"]
-include = ["pdf_inspector*"]
+where = ["."]
+include = ["ai_engine*", "backend*", "frontend*", "benchmarks*", "training_lab*"]
 
 [tool.setuptools.package-data]
-"pdf_inspector.detectors.secret" = ["templates/*.png"]
+"ai_engine.detectors.secret" = ["templates/*.png"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src", "."]
+pythonpath = ["."]
 python_files = ["test_*.py"]
 addopts = "-q"
-

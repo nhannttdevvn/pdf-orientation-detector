@@ -3,7 +3,7 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PYTHONPATH=/workspace/src
+    PYTHONPATH=/workspace
 
 # Cài đặt Tesseract OCR (kèm gói ngôn ngữ tiếng Anh, tiếng Việt và OSD) và thư viện hệ thống cho OpenCV
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -24,5 +24,4 @@ COPY . .
 
 EXPOSE 8501
 
-CMD ["streamlit", "run", "src/pdf_inspector/ui/streamlit_app.py", "--server.address=0.0.0.0", "--server.port=8501", "--server.headless=true"]
-
+CMD ["streamlit", "run", "frontend/app/streamlit_app.py", "--server.address=0.0.0.0", "--server.port=8501", "--server.headless=true"]
