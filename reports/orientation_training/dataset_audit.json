@@ -1,0 +1,44 @@
+{
+  "n_images": 1876,
+  "per_class": {
+    "0": 469,
+    "90": 469,
+    "180": 469,
+    "270": 469
+  },
+  "n_pages": 469,
+  "pages_missing_variants": 0,
+  "images_missing_on_disk": 0,
+  "images_unreadable": 0,
+  "images_abnormal_size": 0,
+  "label_dir_mismatch": 0,
+  "uid_unlinked_to_source": 0,
+  "distinct_sizes": 24,
+  "top_sizes": [
+    {
+      "size": "543x768",
+      "count": 264
+    },
+    {
+      "size": "768x543",
+      "count": 264
+    },
+    {
+      "size": "768x544",
+      "count": 226
+    },
+    {
+      "size": "544x768",
+      "count": 226
+    },
+    {
+      "size": "545x768",
+      "count": 122
+    }
+  ],
+  "cross_pdf_exact_dup_groups": 0,
+  "cross_pdf_near_dup_groups": 26,
+  "cross_pdf_exact_examples": [],
+  "issues": [],
+  "passed": true
+}

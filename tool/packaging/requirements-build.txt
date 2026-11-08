@@ -1,0 +1,10 @@
+# Thư viện dùng để BUILD bản chạy độc lập (người dùng cuối không cần cài).
+# Ghim OpenCV 4.x: OpenCV 5 đổi kiểu trả về của một số hàm (HoughLinesP).
+opencv-python>=4.8,<5
+pymupdf>=1.23,<2   # PyMuPDF 2.x tự nạp mô hình phân tích bố cục (ONNX) khi import: nặng, tool không dùng
+numpy>=1.24,<3
+rapidocr-onnxruntime>=1.3
+openpyxl>=3.1
+pillow>=10.0
+pytesseract>=0.3.10
+pyinstaller>=6.3

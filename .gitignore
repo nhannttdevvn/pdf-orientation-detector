@@ -1,0 +1,40 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment variables
+.env
+
+# macOS metadata files
+.DS_Store
+._*
+
+# Runtime logs & generated user data (C4 Data Security: never commit real/sensitive PDFs or temporary crops)
+logs/*.log
+data/dataset_review/
+data/samples/
+data/uploads/*
+!data/uploads/.gitkeep
+data/outputs/*
+!data/outputs/.gitkeep
+*tài liệu mật*
+*tai_lieu_mat*
+*_secret_crop_*
+
+# Build artifacts & large packages
+*.egg-info/
+build/
+dist/
+*.dmg
+colab_training/*.zip
+tool/packaging/_build/
+tool/reports/

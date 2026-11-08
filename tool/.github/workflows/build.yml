@@ -1,0 +1,63 @@
+# Build bản chạy độc lập cho Windows (file zip, đã đóng gói kèm Tesseract).
+# - Chạy tay: tab Actions -> "Build ban chay doc lap" -> Run workflow. Tải file zip ở mục Artifacts.
+# - Đẩy tag dạng v1.0.0: tự tạo GitHub Release đính kèm file zip.
+# Workflow này giả định thư mục tool_tailieu_xoay_trang là gốc của repository.
+name: Build ban chay doc lap
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        # Chỉ build bản Windows (thêm macos-14 / ubuntu-22.04 vào danh sách nếu sau này cần)
+        os: [windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cai Tesseract (chi Windows, de dong goi kem)
+        if: runner.os == 'Windows'
+        run: choco install tesseract -y --no-progress
+
+      - name: Cai thu vien build
+        run: python -m pip install -r packaging/requirements-build.txt
+
+      - name: Build
+        run: python packaging/build.py
+
+      - name: Kiem tra ban build chay duoc (CLI, thu muc rong)
+        shell: bash
+        run: |
+          APP=packaging/_build/dist/KiemTraHoSo
+          mkdir -p smoke_in
+          "$APP/KiemTraHoSo_CLI" --input smoke_in --output smoke_out || true
+          "$APP/KiemTraHoSo_CLI" --help
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KiemTraHoSo-${{ matrix.os }}
+          path: packaging/_build/KiemTraHoSo-*.zip
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip

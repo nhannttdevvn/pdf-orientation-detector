@@ -1,0 +1,15 @@
+{
+  "IMAGE_SIZE": 224,
+  "BATCH_SIZE": 32,
+  "EPOCHS": 20,
+  "LEARNING_RATE": 1e-4,
+  "WEIGHT_DECAY": 1e-4,
+  "SEED": 42,
+  "NUM_WORKERS": 2,
+  "EARLY_STOP_PATIENCE": 5,
+  "SCHEDULER_PATIENCE": 2,
+  "DEVICE": "cuda",
+  "CLASS_NAMES": ["0", "90", "180", "270"],
+  "label_semantics": "Nhãn = góc ảnh bị xoay theo chiều kim đồng hồ so với hướng chuẩn; góc cần xoay để sửa = (360 - nhãn) % 360",
+  "notes": "Giá trị khởi tạo. BATCH_SIZE/NUM_WORKERS điều chỉnh theo VRAM thực tế trên Colab. Mixed precision chỉ bật khi CUDA."
+}

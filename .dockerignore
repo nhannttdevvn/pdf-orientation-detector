@@ -1,0 +1,23 @@
+# Loại trừ dữ liệu nhạy cảm, file tạm, cache và Git khỏi Docker image (Phase 4 — Part C4 & Step 10)
+.git
+.gitignore
+.__*
+._*
+.DS_Store
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+logs/*.log
+data/uploads/*
+!data/uploads/.gitkeep
+data/outputs/*.pdf
+data/outputs/*.json
+data/outputs/*.csv
+data/outputs/*.png
+*tài liệu mật*
+*tai_lieu_mat*

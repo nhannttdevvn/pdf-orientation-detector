@@ -1,0 +1,62 @@
+KIỂM TRA HỒ SƠ LƯU TRỮ — HƯỚNG DẪN SỬ DỤNG
+===========================================
+
+Bạn không cần cài Python, thư viện hay phần mềm nào khác. Mọi thứ đã có sẵn trong gói này.
+
+
+MỞ CÔNG CỤ
+----------
+  - Windows : bấm đúp  KiemTraHoSo.exe
+  - macOS   : kéo  KiemTraHoSo.app  vào thư mục Applications (hoặc để ở đâu cũng được), rồi bấm đúp.
+              (Chỉ chạy trên Mac chip Apple M1/M2/M3/M4...)
+              Nếu macOS báo "Apple không thể xác minh 'KiemTraHoSo'..." (do app chưa ký số Apple):
+                1. Bấm "Xong" (Done).
+                2. Mở System Settings -> Privacy & Security, kéo xuống phần Security,
+                   bấm "Open Anyway" (Vẫn mở) cạnh dòng KiemTraHoSo, nhập mật khẩu máy.
+                3. Bấm "Open Anyway" lần nữa. Các lần sau chỉ cần bấm đúp.
+              Hoặc mở Terminal và gõ:  xattr -dr com.apple.quarantine /Applications/KiemTraHoSo.app
+  - Linux   : bấm đúp  mo_tool.sh , hoặc mở Terminal tại thư mục này và gõ  ./mo_tool.sh
+
+
+CÁCH DÙNG
+---------
+1. Ở dòng "Thư mục PDF đầu vào", bấm "Chọn..." và chọn thư mục chứa các file PDF cần kiểm tra
+   (công cụ quét tất cả file PDF trong thư mục đó, kể cả thư mục con).
+   Hồ sơ gồm nhiều file nối tiếp (vd. 0056_1.pdf ... 0056_7.pdf) cần để chung một thư mục
+   để đối chiếu Mục lục được chính xác.
+2. Ở dòng "Thư mục xuất báo cáo", giữ mặc định hoặc bấm "Chọn..." để đổi nơi lưu kết quả.
+3. Bấm nút xanh "BẮT ĐẦU KIỂM TRA & BÓC TÁCH HỒ SƠ". Theo dõi tiến độ ở thanh tiến trình và khung nhật ký.
+4. Khi xong:
+     - Bảng "Tổng Quan Theo File PDF": kết luận từng file (đỏ = Lỗi, vàng = Cần kiểm tra, xanh = Không lỗi).
+       Cột "Trang Xoay" ghi rõ trang nào cần xoay, vd. "Trang 2 (cần xoay 90°), Trang 5 (cần kiểm tra)".
+     - Bảng "Bóc Tách Chi Tiết Từng Văn Bản": các văn bản bóc tách được.
+     - Kết quả đối chiếu Mục lục nằm trong file Excel (sheet "Đối Chiếu Mục Lục").
+5. Các nút mở nhanh: "Báo Cáo Excel (6 Sheet)", "Dấu Mật", "Sọc Scan", "Trang Xoay" (ảnh trang bị xoay),
+   "PDF Đã Xoay" (bản PDF đã sửa), "Ảnh Minh Chứng".
+
+
+Ý NGHĨA KẾT LUẬN
+-----------------
+  - Lỗi          : phát hiện chắc chắn (trang bị xoay, sọc scan, sai lệch Mục lục đọc rõ ràng,
+                   trùng STT trong Mục lục ...).
+  - Cần kiểm tra : công cụ không đủ chắc chắn (số / ngày viết tay, văn bản chưa xác định đủ trang
+                   đầu - cuối ...). Hãy xem ảnh minh chứng để xác nhận.
+  - Không lỗi    : không phát hiện vấn đề.
+Trang bị xoay được sửa trong bản PDF mới (thư mục pdf_da_xoay). File gốc luôn được giữ nguyên.
+
+
+KẾT QUẢ ĐƯỢC LƯU (thư mục kết quả)
+-----------------------------------
+  - bao_cao_kiem_tra.xlsx           Báo cáo Excel 6 sheet
+  - ket_qua_kiem_tra_van_ban.txt    Báo cáo đối chiếu Mục lục
+  - pdf_da_xoay/                    PDF đã sửa trang bị xoay
+  - evidence_crops/                 Ảnh minh chứng (đầu/cuối văn bản, Số ký hiệu, Ngày tháng)
+  - trang_bi_xoay/, tai_lieu_mat/, anh_co_soc/
+
+
+CHẠY BẰNG DÒNG LỆNH (không cần giao diện)
+------------------------------------------
+     Windows : KiemTraHoSo_CLI.exe --input "D:\HoSo\pdf" --output "D:\HoSo\ket_qua"
+     macOS   : KiemTraHoSo.app/Contents/MacOS/KiemTraHoSo_CLI --input ~/HoSo/pdf --output ~/HoSo/ket_qua
+     Linux   : ./KiemTraHoSo_CLI --input ~/HoSo/pdf --output ~/HoSo/ket_qua
+Thêm  --khong-sua-xoay  để không xuất PDF đã sửa;  --khong-doi-chieu-muc-luc  để bỏ đối chiếu Mục lục.

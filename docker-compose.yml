@@ -1,0 +1,15 @@
+services:
+  pdf-quality-inspector:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pdf-quality-inspector
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/workspace/data
+      - ./logs:/workspace/logs
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+
