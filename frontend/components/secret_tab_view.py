@@ -330,7 +330,7 @@ def _edit_secret_mark_dialog(
 
 def render_secret_upload_card() -> Tuple[Optional[Any], List[Any], Any]:
     """
-    Hiển thị Upload & Live Progress Card riêng cho Tab 2 (cùng Design System Tab 1).
+    Hiển thị Upload Area lớn (Mục 5) & Thanh thông tin file 1 hàng ngang (Mục 6) cho chế độ Dấu độ mật.
     Trả về `(uploaded_file, dir_files, progress_placeholder)`.
     """
     uploader_ver = int(st.session_state.get("secret_uploader_key_ver", 0))
@@ -344,129 +344,146 @@ def render_secret_upload_card() -> Tuple[Optional[Any], List[Any], Any]:
     )
     doc_error: Optional[str] = st.session_state.get("secret_doc_error")
 
+    # --- KHU VỰC 5: LARGE UPLOAD AREA ---
+    with st.container(key="upload_zone_box"):
+        uploaded_file, dir_files = render_upload_zone(
+            file_key=f"secret_pdf_uploader_{uploader_ver}",
+            dir_key=f"secret_pdf_dir_uploader_{dir_uploader_ver}",
+            file_label="Chọn file PDF kiểm tra dấu độ mật",
+        )
+
+    # --- KHU VỰC 6: THANH THÔNG TIN FILE (1 hàng ngang 65–75px) ---
     with st.container(key="upload_card"):
-        col_left, col_right = st.columns([33, 67], vertical_alignment="center")
+        col_left, col_mid, col_right = st.columns(
+            [3.2, 5.2, 1.6], vertical_alignment="center"
+        )
 
         with col_left:
-            with st.container(key="upload_zone_box"):
-                uploaded_file, dir_files = render_upload_zone(
-                    file_key=f"secret_pdf_uploader_{uploader_ver}",
-                    dir_key=f"secret_pdf_dir_uploader_{dir_uploader_ver}",
-                    file_label="Chọn file PDF kiểm tra dấu độ mật",
+            if batch is not None:
+                render_batch_info(batch)
+            elif doc_info is not None:
+                safe_fname = html.escape(display_name or doc_info.file_name)
+                size_label = format_file_size(
+                    file_size_bytes or doc_info.file_size_bytes
+                )
+                st.markdown(
+                    clean_html(
+                        f"""
+                        <div class="file-meta-row">
+                          {SVG_PDF_BADGE}
+                          <div class="file-meta-texts">
+                            <p class="file-name-txt" title="{safe_fname}">{safe_fname}</p>
+                            <p class="file-sub-txt">{doc_info.page_count} trang &middot; {size_label}</p>
+                          </div>
+                        </div>
+                        """
+                    ),
+                    unsafe_allow_html=True,
+                )
+            elif doc_error:
+                safe_fname = html.escape(
+                    display_name or "Tài liệu không hợp lệ"
+                )
+                st.markdown(
+                    clean_html(
+                        f"""
+                        <div class="file-meta-row">
+                          {SVG_PDF_BADGE}
+                          <div class="file-meta-texts">
+                            <p class="file-name-txt">{safe_fname}</p>
+                            <p class="file-sub-txt" style="color:#E93D4D;">{html.escape(doc_error)}</p>
+                          </div>
+                        </div>
+                        """
+                    ),
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown(
+                    clean_html(
+                        f"""
+                        <div class="file-meta-row">
+                          {SVG_PDF_BADGE_MUTED}
+                          <div class="file-meta-texts">
+                            <p class="file-name-txt" style="color:#667892;">Chưa chọn tài liệu PDF</p>
+                            <p class="file-sub-txt">0 trang &middot; 0 B</p>
+                          </div>
+                        </div>
+                        """
+                    ),
+                    unsafe_allow_html=True,
+                )
+
+        with col_mid:
+            progress_slot = st.empty()
+            if batch is not None:
+                render_batch_progress(progress_slot, batch)
+            elif doc_result is not None and doc_info is not None:
+                n_total = doc_info.page_count
+                progress_slot.markdown(
+                    render_progress_html(
+                        percent=100,
+                        status_text=f"Đã kiểm tra xong {n_total}/{n_total} trang",
+                        state="done",
+                    ),
+                    unsafe_allow_html=True,
+                )
+            elif doc_error:
+                progress_slot.markdown(
+                    render_progress_html(
+                        percent=0,
+                        status_text="Không thể kiểm tra tài liệu PDF này.",
+                        state="idle",
+                    ),
+                    unsafe_allow_html=True,
+                )
+            else:
+                progress_slot.markdown(
+                    render_progress_html(
+                        percent=0,
+                        status_text="Chờ tải file PDF để nhận diện dấu độ mật",
+                        state="idle",
+                    ),
+                    unsafe_allow_html=True,
                 )
 
         with col_right:
-            with st.container(key="file_proc_col"):
-                top_info_col, top_close_col = st.columns(
-                    [9.3, 0.7], vertical_alignment="top"
+            has_active_doc = (batch is not None) or (doc_info is not None) or (doc_error is not None)
+            with st.container(horizontal=True, vertical_alignment="center", key="file_bar_actions_row"):
+                st.button(
+                    "",
+                    icon=":material/folder_open:",
+                    key="btn_sec_filebar_folder",
+                    disabled=not has_active_doc,
+                    help="Tài liệu đang mở trong chế độ Dấu độ mật",
                 )
-                with top_info_col:
+                st.button(
+                    "",
+                    icon=":material/info:",
+                    key="btn_sec_filebar_info",
+                    disabled=(doc_info is None and batch is None),
+                    help=(
+                        f"{display_name or (doc_info.file_name if doc_info else '')} · "
+                        f"{doc_info.page_count if doc_info else 0} trang"
+                        if doc_info is not None
+                        else "Thông tin tài liệu PDF"
+                    ),
+                )
+                if st.button(
+                    "",
+                    icon=":material/delete:",
+                    key="btn_clear_file",
+                    disabled=not has_active_doc,
+                    help="Bỏ file khỏi phiên xử lý (không xóa PDF gốc trên máy người dùng)",
+                ):
                     if batch is not None:
-                        render_batch_info(batch)
-                    elif doc_info is not None:
-                        safe_fname = html.escape(display_name or doc_info.file_name)
-                        size_label = format_file_size(
-                            file_size_bytes or doc_info.file_size_bytes
-                        )
-                        st.markdown(
-                            clean_html(
-                                f"""
-                                <div class="file-meta-row">
-                                  {SVG_PDF_BADGE}
-                                  <div>
-                                    <p class="file-name-txt">{safe_fname}</p>
-                                    <p class="file-sub-txt">{doc_info.page_count} trang &middot; {size_label}</p>
-                                  </div>
-                                </div>
-                                """
-                            ),
-                            unsafe_allow_html=True,
-                        )
-                    elif doc_error:
-                        safe_fname = html.escape(
-                            display_name or "Tài liệu không hợp lệ"
-                        )
-                        st.markdown(
-                            clean_html(
-                                f"""
-                                <div class="file-meta-row">
-                                  {SVG_PDF_BADGE}
-                                  <div>
-                                    <p class="file-name-txt">{safe_fname}</p>
-                                    <p class="file-sub-txt" style="color:#EB364C;">{html.escape(doc_error)}</p>
-                                  </div>
-                                </div>
-                                """
-                            ),
-                            unsafe_allow_html=True,
-                        )
+                        clear_batch(TAB_SECRET)
+                        release_secret_resources(increment_uploader=True)
+                        bump_dir_uploader(TAB_SECRET)
+                        st.rerun()
                     else:
-                        st.markdown(
-                            clean_html(
-                                f"""
-                                <div class="file-meta-row">
-                                  {SVG_PDF_BADGE_MUTED}
-                                  <div>
-                                    <p class="file-name-txt" style="color:#64748B;">Chưa chọn tài liệu PDF</p>
-                                    <p class="file-sub-txt">Nhận diện dấu MẬT, TỐI MẬT, TUYỆT MẬT trên PDF nhiều trang &middot; Xử lý offline an toàn</p>
-                                  </div>
-                                </div>
-                                """
-                            ),
-                            unsafe_allow_html=True,
-                        )
-
-                with top_close_col:
-                    if batch is not None:
-                        if st.button(
-                            "✕",
-                            key="btn_clear_file",
-                            help="Bỏ chọn thư mục và xóa bộ đệm ảnh tạm trong RAM",
-                        ):
-                            clear_batch(TAB_SECRET)
-                            release_secret_resources(increment_uploader=True)
-                            bump_dir_uploader(TAB_SECRET)
-                            st.rerun()
-                    elif doc_info is not None or doc_error is not None:
-                        if st.button(
-                            "✕",
-                            key="btn_clear_file",
-                            help="Đóng tài liệu hiện tại và xóa bộ đệm ảnh tạm trong RAM",
-                        ):
-                            release_secret_resources(increment_uploader=True)
-                            st.rerun()
-
-                progress_slot = st.empty()
-                if batch is not None:
-                    render_batch_progress(progress_slot, batch)
-                elif doc_result is not None and doc_info is not None:
-                    n_total = doc_info.page_count
-                    progress_slot.markdown(
-                        render_progress_html(
-                            percent=100,
-                            status_text=f"Đã kiểm tra xong {n_total}/{n_total} trang",
-                            state="done",
-                        ),
-                        unsafe_allow_html=True,
-                    )
-                elif doc_error:
-                    progress_slot.markdown(
-                        render_progress_html(
-                            percent=0,
-                            status_text="Không thể kiểm tra tài liệu PDF này.",
-                            state="idle",
-                        ),
-                        unsafe_allow_html=True,
-                    )
-                else:
-                    progress_slot.markdown(
-                        render_progress_html(
-                            percent=0,
-                            status_text="Tải file PDF lên để bắt đầu nhận diện dấu độ mật",
-                            state="idle",
-                        ),
-                        unsafe_allow_html=True,
-                    )
+                        release_secret_resources(increment_uploader=True)
+                        st.rerun()
 
     return uploaded_file, dir_files, progress_slot
 
@@ -598,10 +615,24 @@ def render_secret_results_table(
     ]
 
     with st.container(key="left_error_card"):
-        st.markdown(
-            '<div class="panel-heading">Danh sách trang phát hiện dấu độ mật</div>',
-            unsafe_allow_html=True,
-        )
+        hdr_l, hdr_r = st.columns([7.8, 2.2], vertical_alignment="center")
+        with hdr_l:
+            st.markdown(
+                '<div class="panel-heading">Kết quả kiểm tra</div>',
+                unsafe_allow_html=True,
+            )
+        with hdr_r:
+            with st.container(horizontal=True, vertical_alignment="center", key="left_panel_hdr_icons"):
+                if st.button(
+                    "",
+                    icon=":material/filter_alt:",
+                    key="btn_sec_hdr_reset_flt",
+                    help="Đặt lại bộ lọc về Tất cả",
+                ):
+                    if active_filter != "ALL":
+                        st.session_state["secret_active_filter"] = "ALL"
+                        st.session_state["secret_table_page_idx"] = 0
+                        st.rerun()
 
         if render_file_filter is not None:
             render_file_filter()
@@ -801,45 +832,134 @@ def render_secret_preview_panel(
     file_name: str,
 ) -> None:
     """
-    Hiển thị Panel bên phải Tab 2 chuẩn B3:
-    - Ảnh PDF gốc kèm bounding box dấu mật & nhãn dự đoán.
-    - Ảnh crop phóng to dấu (chỉ tồn tại trong RAM).
-    - Độ tin cậy (Confidence) & Phương pháp phát hiện.
-    - 3 nút Review Actions: `Xác nhận` | `Bỏ qua` | `Chỉnh sửa kết quả`.
-    - Xuất báo cáo kết quả JSON / CSV (tuyệt đối không tự động tách PDF).
+    Hiển thị Panel bên phải chế độ Dấu độ mật (Mục 10 & 11):
+    - Tiêu đề `Xem trang [số trang]` + Toolbar phía trên.
+    - Trái: Ảnh PDF gốc kèm bounding box dấu mật & ảnh crop phóng to dấu (chỉ trong RAM).
+    - Phải: `Thông tin trang` + 3 nút hành động (`Chấp nhận` | `Bỏ qua` | `Sửa thủ công`).
     """
+    zoom_pct: int = int(st.session_state.get("secret_preview_zoom_pct", 100))
+    view_rot_deg: int = int(st.session_state.get("secret_preview_view_rotation_deg", 0))
+    pno_display = selected_page.page_number if selected_page is not None else 0
+    total_pages = doc_result.total_pages if doc_result is not None else 0
+    heading_txt = f"Xem trang {pno_display}" if pno_display > 0 else "Xem trang"
+
+    flagged_list = build_secret_flagged_rows(doc_result) if doc_result is not None else []
+    nav_pages = [p.page_number for p in flagged_list]
+    cur_nav_idx = nav_pages.index(pno_display) if pno_display in nav_pages else -1
+    has_valid_page = (
+        doc_result is not None
+        and selected_page is not None
+        and active_pdf_path is not None
+        and active_pdf_path.exists()
+    )
+    can_prev = has_valid_page and cur_nav_idx > 0
+    can_next = has_valid_page and 0 <= cur_nav_idx < len(nav_pages) - 1
+    counter_txt = f"{pno_display} / {total_pages}" if (has_valid_page and total_pages > 0) else "0 / 0"
+
     with st.container(key="right_preview_card"):
         st.markdown(
-            '<div class="panel-heading">Xem trước dấu nhận diện</div>',
+            f'<div class="panel-heading">{html.escape(heading_txt)}</div>',
             unsafe_allow_html=True,
         )
 
-        if (
-            doc_result is None
-            or selected_page is None
-            or active_pdf_path is None
-            or not active_pdf_path.exists()
-        ):
+        with st.container(horizontal=True, vertical_alignment="center", key="preview_toolbar_bar"):
+            if st.button(
+                "",
+                icon=":material/chevron_left:",
+                key="sec_ptb_prev",
+                disabled=not can_prev,
+                help="Trang có dấu mật trước đó",
+            ):
+                st.session_state["secret_selected_page_num"] = nav_pages[cur_nav_idx - 1]
+                st.session_state["secret_preview_view_rotation_deg"] = 0
+                st.rerun()
+
             st.markdown(
-                clean_html(
-                    """
-                    <div class="doc-preview-stage">
-                      <div style="text-align:center;color:#70849F;font-size:13.5px;padding:0 16px;">
-                        Chọn một trang trong danh sách bên trái để xem vị trí dấu độ mật, ảnh phóng to dấu và thao tác rà soát.
-                      </div>
-                    </div>
-                    <div class="error-detail-card" style="margin-top:8px;">
-                      <div class="error-detail-row"><span class="error-detail-label">Trang:</span><span class="error-detail-val">&mdash;</span></div>
-                      <div class="error-detail-row"><span class="error-detail-label">Nhãn dự đoán:</span><span class="error-detail-val">&mdash;</span></div>
-                      <div class="error-detail-row"><span class="error-detail-label">Độ tin cậy:</span><span class="error-detail-val">&mdash;</span></div>
-                      <div class="error-detail-row"><span class="error-detail-label">Phương pháp:</span><span class="error-detail-val">&mdash;</span></div>
-                    </div>
-                    """
-                ),
+                f'<span class="ptb-page-counter">{html.escape(counter_txt)}</span>',
                 unsafe_allow_html=True,
             )
-            if doc_result is not None:
-                _render_secret_export_buttons(doc_result, file_name)
+
+            if st.button(
+                "",
+                icon=":material/chevron_right:",
+                key="sec_ptb_next",
+                disabled=not can_next,
+                help="Trang có dấu mật tiếp theo",
+            ):
+                st.session_state["secret_selected_page_num"] = nav_pages[cur_nav_idx + 1]
+                st.session_state["secret_preview_view_rotation_deg"] = 0
+                st.rerun()
+
+            if st.button(
+                "",
+                icon=":material/remove:",
+                key="sec_ptb_zout",
+                disabled=(not has_valid_page or zoom_pct <= 60),
+                help="Thu nhỏ ảnh xem trước",
+            ):
+                st.session_state["secret_preview_zoom_pct"] = max(60, zoom_pct - 20)
+                st.rerun()
+
+            if st.button(
+                "",
+                icon=":material/add:",
+                key="sec_ptb_zin",
+                disabled=(not has_valid_page or zoom_pct >= 180),
+                help="Phóng to ảnh xem trước",
+            ):
+                st.session_state["secret_preview_zoom_pct"] = min(180, zoom_pct + 20)
+                st.rerun()
+
+            if st.button(
+                "Fit",
+                key="sec_ptb_fit",
+                disabled=not has_valid_page,
+                help="Khớp khung nhìn mặc định (100%)",
+            ):
+                st.session_state["secret_preview_zoom_pct"] = 100
+                st.session_state["secret_preview_view_rotation_deg"] = 0
+                st.rerun()
+
+            if st.button(
+                "",
+                icon=":material/rotate_right:",
+                key="sec_ptb_rot",
+                disabled=not has_valid_page,
+                help="Xoay góc nhìn preview +90° (chỉ xoay khung nhìn tạm thời, KHÔNG sửa PDF)",
+            ):
+                st.session_state["secret_preview_view_rotation_deg"] = (view_rot_deg + 90) % 360
+                st.rerun()
+
+        if not has_valid_page or doc_result is None or selected_page is None or active_pdf_path is None:
+            col_stage_e, col_info_e = st.columns([5.8, 4.2], vertical_alignment="top")
+            with col_stage_e:
+                st.markdown(
+                    clean_html(
+                        """
+                        <div class="doc-preview-stage">
+                          <div style="text-align:center;color:#667892;font-size:13px;padding:0 16px;">
+                            Chọn một trang trong bảng Kết quả kiểm tra bên trái để xem vị trí dấu độ mật và thông tin trang.
+                          </div>
+                        </div>
+                        """
+                    ),
+                    unsafe_allow_html=True,
+                )
+            with col_info_e:
+                st.markdown(
+                    clean_html(
+                        """
+                        <div class="error-detail-card">
+                          <div class="error-detail-heading">Thông tin trang</div>
+                          <div class="error-detail-row"><span class="error-detail-label">Trang:</span><span class="error-detail-val">&mdash;</span></div>
+                          <div class="error-detail-row"><span class="error-detail-label">Loại lỗi:</span><span class="error-detail-val">&mdash;</span></div>
+                          <div class="error-detail-row"><span class="error-detail-label">Trạng thái:</span><span class="error-detail-val">&mdash;</span></div>
+                          <div class="error-detail-row"><span class="error-detail-label">Độ tin cậy:</span><span class="error-detail-val">&mdash;</span></div>
+                        </div>
+                        """
+                    ),
+                    unsafe_allow_html=True,
+                )
             return
 
         annotated_rgb, crops = get_cached_secret_preview_bundle(
@@ -860,38 +980,86 @@ def render_secret_preview_panel(
             else ("green" if eff_lbl == "GIẢI MẬT" else "")
         )
 
-        st.markdown(
-            clean_html(
-                f"""
-                <div class="doc-preview-stage" style="height:192px;">
-                  <div class="doc-sheet-frame" style="max-height:176px;">
-                    <img src="{page_uri}" alt="Trang {selected_page.page_number}" style="max-height:176px;" />
-                  </div>
-                  <div class="preview-floating-pill {pill_tone}">
-                    <span class="preview-pill-dot"></span>
-                    <span>{html.escape(eff_lbl)}</span>
-                  </div>
-                </div>
-                """
-            ),
-            unsafe_allow_html=True,
-        )
+        tf_parts = []
+        if zoom_pct != 100:
+            tf_parts.append(f"scale({zoom_pct / 100.0:.2f})")
+        if view_rot_deg != 0:
+            tf_parts.append(f"rotate({view_rot_deg}deg)")
+        tf_style = f"transform:{' '.join(tf_parts)};transform-origin:center center;" if tf_parts else ""
 
-        # Khung ảnh crop phóng to dấu (chỉ trong RAM — C4)
-        if crops:
-            top_mark, top_crop = crops[0]
-            crop_uri = _rgb_to_data_uri(top_crop)
-            bbox_txt = f"({top_mark.bbox[0]}, {top_mark.bbox[1]}) – ({top_mark.bbox[2]}, {top_mark.bbox[3]}) px"
+        col_stage, col_side_info = st.columns([5.8, 4.2], vertical_alignment="top")
+
+        with col_stage:
             st.markdown(
                 clean_html(
                     f"""
-                    <div class="secret-crop-strip">
-                      <div class="secret-crop-thumb">
-                        <img src="{crop_uri}" alt="Crop dấu độ mật" />
+                    <div class="doc-preview-stage">
+                      <div class="doc-sheet-frame" style="{tf_style}">
+                        <img src="{page_uri}" alt="Trang {selected_page.page_number}" />
                       </div>
-                      <div class="secret-crop-meta">
-                        <strong>Ảnh phóng to vùng dấu (chỉ hiển thị trong RAM)</strong>
-                        <span>Vị trí BBox: {html.escape(bbox_txt)} &middot; Kênh: {html.escape(top_mark.channel_used)}</span>
+                      <div class="preview-floating-pill {pill_tone}">
+                        <span class="preview-pill-dot"></span>
+                        <span>{html.escape(eff_lbl)}</span>
+                      </div>
+                    </div>
+                    """
+                ),
+                unsafe_allow_html=True,
+            )
+            if crops:
+                top_mark, top_crop = crops[0]
+                crop_uri = _rgb_to_data_uri(top_crop)
+                bbox_txt = f"({top_mark.bbox[0]}, {top_mark.bbox[1]}) – ({top_mark.bbox[2]}, {top_mark.bbox[3]}) px"
+                st.markdown(
+                    clean_html(
+                        f"""
+                        <div class="secret-crop-strip" style="margin-top:8px;">
+                          <div class="secret-crop-thumb">
+                            <img src="{crop_uri}" alt="Crop dấu độ mật" />
+                          </div>
+                          <div class="secret-crop-meta">
+                            <strong>Vùng dấu (trong RAM)</strong>
+                            <span>BBox: {html.escape(bbox_txt)}</span>
+                          </div>
+                        </div>
+                        """
+                    ),
+                    unsafe_allow_html=True,
+                )
+
+        with col_side_info:
+            top_conf_str = (
+                f"{max(m.confidence for m in selected_page.marks) * 100:.1f}%"
+                if selected_page.marks
+                else "N/A"
+            )
+            method_str = (
+                _format_method_vn(selected_page.marks[0].detection_method)
+                if selected_page.marks
+                else (selected_page.error_message or "Không xác định")
+            )
+            status_txt, status_tone = _format_secret_status_pill(selected_page)
+
+            st.markdown(
+                clean_html(
+                    f"""
+                    <div class="error-detail-card">
+                      <div class="error-detail-heading">Thông tin trang</div>
+                      <div class="error-detail-row">
+                        <span class="error-detail-label">Trang:</span>
+                        <span class="error-detail-val">{selected_page.page_number} / {total_pages}</span>
+                      </div>
+                      <div class="error-detail-row">
+                        <span class="error-detail-label">Loại lỗi:</span>
+                        <span class="error-detail-val">{_format_label_badge_html(selected_page)}</span>
+                      </div>
+                      <div class="error-detail-row">
+                        <span class="error-detail-label">Trạng thái:</span>
+                        <span class="error-detail-val"><span class="status-pill {status_tone}">{html.escape(status_txt)}</span></span>
+                      </div>
+                      <div class="error-detail-row">
+                        <span class="error-detail-label">Độ tin cậy:</span>
+                        <span class="error-detail-val">{html.escape(top_conf_str)} &middot; {html.escape(method_str)}</span>
                       </div>
                     </div>
                     """
@@ -899,52 +1067,11 @@ def render_secret_preview_panel(
                 unsafe_allow_html=True,
             )
 
-        top_conf_str = (
-            f"{max(m.confidence for m in selected_page.marks) * 100:.1f}%"
-            if selected_page.marks
-            else "N/A"
-        )
-        method_str = (
-            _format_method_vn(selected_page.marks[0].detection_method)
-            if selected_page.marks
-            else (selected_page.error_message or "Không xác định")
-        )
-        status_txt, status_tone = _format_secret_status_pill(selected_page)
-
-        st.markdown(
-            clean_html(
-                f"""
-                <div class="error-detail-card">
-                  <div class="error-detail-row">
-                    <span class="error-detail-label">Trang:</span>
-                    <span class="error-detail-val">{selected_page.page_number} <span class="status-pill {status_tone}" style="margin-left:8px;">{html.escape(status_txt)}</span></span>
-                  </div>
-                  <div class="error-detail-row">
-                    <span class="error-detail-label">Nhãn dự đoán:</span>
-                    <span class="error-detail-val">{_format_label_badge_html(selected_page)}</span>
-                  </div>
-                  <div class="error-detail-row">
-                    <span class="error-detail-label">Độ tin cậy:</span>
-                    <span class="error-detail-val">{html.escape(top_conf_str)}</span>
-                  </div>
-                  <div class="error-detail-row">
-                    <span class="error-detail-label">Phương pháp:</span>
-                    <span class="error-detail-val">{html.escape(method_str)}</span>
-                  </div>
-                </div>
-                """
-            ),
-            unsafe_allow_html=True,
-        )
-
-        # Hàng 3 nút Review Actions: Xác nhận | Bỏ qua | Chỉnh sửa kết quả
-        pno = selected_page.page_number
-        with st.container(key="preview_actions_bar"):
-            b1, b2, b3 = st.columns([1.05, 0.92, 1.25], vertical_alignment="center")
-            with b1:
+            pno = selected_page.page_number
+            with st.container(key="preview_actions_bar"):
                 with st.container(key="act_accept"):
                     if st.button(
-                        "Xác nhận",
+                        "Chấp nhận",
                         icon=":material/check:",
                         width="stretch",
                         disabled=(selected_page.status == SECRET_STATUS_ERROR),
@@ -962,7 +1089,6 @@ def render_secret_preview_panel(
                             f"Đã xác nhận dấu '{selected_page.effective_label}' tại trang {pno}."
                         )
                         st.rerun()
-            with b2:
                 with st.container(key="act_skip"):
                     if st.button(
                         "Bỏ qua",
@@ -982,10 +1108,9 @@ def render_secret_preview_panel(
                             f"Đã bỏ qua cảnh báo tại trang {pno}."
                         )
                         st.rerun()
-            with b3:
                 with st.container(key="act_manual"):
                     if st.button(
-                        "Chỉnh sửa kết quả",
+                        "Sửa thủ công",
                         icon=":material/edit:",
                         width="stretch",
                         key=f"sec_btn_edit_{pno}",
@@ -996,14 +1121,9 @@ def render_secret_preview_panel(
                             file_name=file_name,
                         )
 
-        fb_msg = st.session_state.get("secret_action_feedback_msg")
-        if fb_msg:
-            st.markdown(
-                f'<div style="font-size:12.5px;color:#079B60;font-weight:600;">{html.escape(fb_msg)}</div>',
-                unsafe_allow_html=True,
-            )
-
-        _render_secret_export_buttons(doc_result, file_name)
+            fb_msg = st.session_state.get("secret_action_feedback_msg")
+            if fb_msg:
+                st.caption(f"✓ {fb_msg}")
 
 
 def _render_secret_export_buttons(

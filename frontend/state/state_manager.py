@@ -118,6 +118,7 @@ def init_dashboard_state() -> None:
     """Khởi tạo đầy đủ biến trạng thái cần thiết trong `st.session_state` cho cả 2 chế độ độc lập."""
     defaults: Dict[str, Any] = {
         "active_mode": "SCAN_QUALITY",  # "SCAN_QUALITY" | "SECRET_DETECTION"
+        "sidebar_collapsed": False,
         # --- Trạng thái Tab 1: Scan Quality Workflow ---
         "uploader_key_ver": 0,
         "file_hash": None,
@@ -127,11 +128,15 @@ def init_dashboard_state() -> None:
         "doc_info": None,
         "doc_error": None,
         "pipeline_result": None,
-        "active_filter": "ALL",  # "ALL" | "STRIPE" | "BOUNDARY" | "ROTATION"
+        "active_filter": "ALL",  # "ALL" | "STRIPE" | "BOUNDARY" | "ROTATION" | "REVIEW"
         "table_page_idx": 0,
         "selected_page_num": None,
+        "selected_row_keys": [],
         "selected_defect_key_by_page": {},  # page_num -> "boundary" | "stripe" | "rotation"
         "preview_tab": "ORIGINAL",  # "ORIGINAL" | "PROPOSED"
+        "preview_zoom_pct": 100,
+        "preview_view_rotation_deg": 0,
+        "open_manual_edit_page": None,
         "manual_overrides": {},  # page_num -> manual rotation angle (0, 90, 180, 270)
         "stripe_feedback": {},  # page_num -> "Confirm defect" | "False positive" | "Uncertain"
         "boundary_feedback": {},  # page_num -> "Confirm" | "False Positive" | "Adjust Boundary"
@@ -157,6 +162,10 @@ def init_dashboard_state() -> None:
         "secret_active_filter": "ALL",  # "ALL" | "MAT" | "TOI_MAT" | "TUYET_MAT" | "REVIEW"
         "secret_table_page_idx": 0,
         "secret_selected_page_num": None,
+        "secret_selected_row_keys": [],
+        "secret_preview_zoom_pct": 100,
+        "secret_preview_view_rotation_deg": 0,
+        "open_secret_edit_page": None,
         "secret_preview_lru_cache": OrderedDict(),
         "secret_action_feedback_msg": None,
     }
@@ -183,6 +192,10 @@ def release_secret_resources(increment_uploader: bool = False) -> None:
     st.session_state["secret_active_filter"] = "ALL"
     st.session_state["secret_table_page_idx"] = 0
     st.session_state["secret_selected_page_num"] = None
+    st.session_state["secret_selected_row_keys"] = []
+    st.session_state["secret_preview_zoom_pct"] = 100
+    st.session_state["secret_preview_view_rotation_deg"] = 0
+    st.session_state["open_secret_edit_page"] = None
     st.session_state["secret_action_feedback_msg"] = None
 
     if increment_uploader:
@@ -212,8 +225,12 @@ def release_document_resources(increment_uploader: bool = False) -> None:
     st.session_state["active_filter"] = "ALL"
     st.session_state["table_page_idx"] = 0
     st.session_state["selected_page_num"] = None
+    st.session_state["selected_row_keys"] = []
     st.session_state["selected_defect_key_by_page"] = {}
     st.session_state["preview_tab"] = "ORIGINAL"
+    st.session_state["preview_zoom_pct"] = 100
+    st.session_state["preview_view_rotation_deg"] = 0
+    st.session_state["open_manual_edit_page"] = None
     st.session_state["manual_overrides"] = {}
     st.session_state["stripe_feedback"] = {}
     st.session_state["boundary_feedback"] = {}
@@ -728,8 +745,12 @@ def build_problem_page_rows(result: Optional[PipelineResult]) -> List[PageIssueR
                     continue
                 unresolved_keys.append(item.key)
 
-        if unresolved_keys:
-            status_label = "Cần kiểm tra"
+        if d.stripe_status == STRIPE_STATUS_ERROR or d.boundary_status == BOUNDARY_STATUS_ERROR:
+            status_label = "Lỗi kiểm tra"
+            status_tone = "red"
+            needs_review_now = True
+        elif unresolved_keys:
+            status_label = "Cần rà soát"
             status_tone = "orange"
             needs_review_now = True
         elif all_skipped and defect_items:
@@ -737,15 +758,15 @@ def build_problem_page_rows(result: Optional[PipelineResult]) -> List[PageIssueR
             status_tone = "gray"
             needs_review_now = False
         elif d.corrected and not d.manual_override and not any_accepted_or_manual:
-            status_label = "Đã tự xoay"
+            status_label = "Đã sửa"
             status_tone = "green"
             needs_review_now = False
         elif d.corrected and d.manual_override and not (pno in st.session_state.get("approved_boundary_ops", {})):
-            status_label = "Đã xoay"
+            status_label = "Đã sửa"
             status_tone = "green"
             needs_review_now = False
         else:
-            status_label = "Đã xử lý"
+            status_label = "Đã sửa"
             status_tone = "green"
             needs_review_now = False
 

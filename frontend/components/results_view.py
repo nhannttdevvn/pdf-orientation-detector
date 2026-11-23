@@ -1,14 +1,13 @@
 """
-Component Khu vực 4 (Cột trái ~61.5%) — Bảng 'Danh sách trang có lỗi' (`src/pdf_inspector/ui/components/results_view.py`).
+Component Khu vực 9 (Panel trái ~51%) — 'Kết quả kiểm tra' (`frontend/components/results_view.py`).
 
-Đảm bảo:
-- Đúng 6 cột: Trang | Lỗi sọc | Lẫn trang | Xoay | Trạng thái | Xem.
-- Chỉ hiển thị trang có lỗi hoặc cần kiểm tra; ẩn toàn bộ trang bình thường.
-- Hàng bộ lọc pill: Tất cả | Sọc | Lẫn trang | Xoay (chuyển bộ lọc không chạy lại OCR).
-- Phân biệt rõ lỗi đã xác nhận (dấu check xanh lá) và nghi vấn độ tin cậy thấp (dấu hỏi cam kèm tooltip).
-- Hỗ trợ phân trang gọn gàng khi có trên 5 trang lỗi và Empty State khi không có lỗi.
-- Giữ các hàm `build_results_dataframe`, `build_stripe_results_dataframe`, `build_boundary_results_dataframe`
-  để tương thích ngược với bộ kiểm thử hiện có.
+Tuân thủ Mục 9:
+- Tiêu đề: `Kết quả kiểm tra`, bên phải có icon filter và icon chọn/chế độ hiển thị kèm tooltip.
+- 5 Filter dạng pill: `Tất cả (n)`, `Sọc (n)`, `Lẫn trang (n)`, `Xoay (n)`, `Cần rà soát (n)`.
+- Bảng dữ liệu 7 cột: `| Chọn | Trang | Sọc | Lẫn | Xoay | Trạng thái | Thao tác |`.
+- Chỉ hiển thị trang có lỗi hoặc cần kiểm tra; không liệt kê trang bình thường.
+- Giữ nguyên các hàm `build_results_dataframe`, `build_stripe_results_dataframe`, `build_boundary_results_dataframe`
+  để tương thích ngược với bộ kiểm thử.
 """
 
 import html
@@ -26,10 +25,14 @@ from ai_engine.core.config import (
     STRIPE_STATUS_ERROR,
 )
 from backend.schemas.schemas import PageDecision, PipelineResult
-from frontend.state.state_manager import PageIssueRow, build_problem_page_rows
+from frontend.state.state_manager import (
+    PageIssueRow,
+    build_problem_page_rows,
+    rebuild_outputs_without_ocr,
+)
 from frontend.styles.styles import SVG_TABLE_CHECK_GREEN, SVG_TABLE_SUSPECT_ORANGE, clean_html
 
-ROWS_PER_PAGE: int = 5
+ROWS_PER_PAGE: int = 7
 
 
 # ==============================================================================
@@ -211,18 +214,70 @@ def render_results_section(result: PipelineResult) -> List[PageDecision]:
 
 
 # ==============================================================================
-# COMPONENT CHÍNH: BẢNG DANH SÁCH TRANG CÓ LỖI (CỘT TRÁI DASHBOARD)
+# COMPONENT CHÍNH: BẢNG KẾT QUẢ KIỂM TRA (PANEL TRÁI MỤC 9)
 # ==============================================================================
 
 
-def _render_defect_indicator_html(state: str, tooltip: str) -> str:
-    """Sinh HTML hiển thị ô Lỗi sọc / Lẫn trang: check xanh (xác nhận), ? cam (nghi vấn), hoặc gạch ngang."""
+SVG_CHK_RED = """
+<svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M4.5 10.5L8.2 14.2L15.8 6.2" stroke="#E93D4D" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+"""
+
+SVG_CHK_ORANGE = """
+<svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M4.5 10.5L8.2 14.2L15.8 6.2" stroke="#E98914" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+"""
+
+SVG_CHK_BLUE = """
+<svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M4.5 10.5L8.2 14.2L15.8 6.2" stroke="#0866E8" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+"""
+
+SVG_PILL_DONE = """
+<svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+  <circle cx="8" cy="8" r="7" fill="#15965D"/>
+  <path d="M5 8.2L7 10.2L11.2 5.8" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+"""
+
+SVG_PILL_REVIEW = """
+<svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+  <circle cx="7" cy="7" r="4.8" stroke="#D97706" stroke-width="1.7"/>
+  <line x1="10.6" y1="10.6" x2="14" y2="14" stroke="#D97706" stroke-width="1.8" stroke-linecap="round"/>
+</svg>
+"""
+
+SVG_PILL_ERR = """
+<svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+  <circle cx="8" cy="8" r="7" fill="#E93D4D"/>
+  <line x1="8" y1="4.5" x2="8" y2="8.8" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"/>
+  <circle cx="8" cy="11.4" r="1" fill="#FFFFFF"/>
+</svg>
+"""
+
+
+def _render_defect_indicator_html(state: str, tooltip: str, kind: str = "stripe") -> str:
+    """Sinh HTML hiển thị ô Sọc / Lẫn / Xoay theo đúng mẫu: dấu check màu đặc trưng hoặc gạch ngang."""
+    if state == "NONE":
+        return '<span class="tbl-dash">&mdash;</span>'
     safe_tip = html.escape(tooltip or "")
-    if state == "CONFIRMED":
-        return clean_html(f'<span class="tbl-icon-tip" title="{safe_tip}">{SVG_TABLE_CHECK_GREEN}</span>')
-    if state == "SUSPECTED":
-        return clean_html(f'<span class="tbl-icon-tip" title="{safe_tip}">{SVG_TABLE_SUSPECT_ORANGE}</span>')
-    return '<span class="tbl-dash">&mdash;</span>'
+    icon_svg = SVG_CHK_RED if kind == "stripe" else (SVG_CHK_ORANGE if kind == "boundary" else SVG_CHK_BLUE)
+    return clean_html(f'<span class="tbl-icon-tip" title="{safe_tip}">{icon_svg}</span>')
+
+
+def _render_status_pill_html(tone: str, label: str) -> str:
+    """Sinh HTML hiển thị pill Trạng thái có icon kèm nhãn khớp ảnh tham chiếu."""
+    safe_lbl = html.escape("Lỗi" if label == "Lỗi kiểm tra" else label)
+    if tone == "green":
+        return clean_html(f'<span class="status-pill green">{SVG_PILL_DONE}<span>{safe_lbl}</span></span>')
+    if tone == "orange":
+        return clean_html(f'<span class="status-pill orange">{SVG_PILL_REVIEW}<span>{safe_lbl}</span></span>')
+    if tone == "red":
+        return clean_html(f'<span class="status-pill red">{SVG_PILL_ERR}<span>{safe_lbl}</span></span>')
+    return clean_html(f'<span class="status-pill gray"><span>{safe_lbl}</span></span>')
 
 
 def _filter_rows(rows: List[PageIssueRow], filter_key: str) -> List[PageIssueRow]:
@@ -232,6 +287,8 @@ def _filter_rows(rows: List[PageIssueRow], filter_key: str) -> List[PageIssueRow
         return [r for r in rows if r.boundary_state != "NONE"]
     if filter_key == "ROTATION":
         return [r for r in rows if r.rotation_state != "NONE"]
+    if filter_key == "REVIEW":
+        return [r for r in rows if r.needs_review_now]
     return rows
 
 
@@ -239,13 +296,13 @@ def _filter_tagged_rows(
     tagged: List[Tuple[Optional[str], Optional[str], PageIssueRow]],
     filter_key: str,
 ) -> List[Tuple[Optional[str], Optional[str], PageIssueRow]]:
-    """Áp dụng đúng bộ lọc hiện có (`_filter_rows`) lên danh sách dòng có gắn tệp PDF."""
     keep = {id(r) for r in _filter_rows([t[2] for t in tagged], filter_key)}
     return [t for t in tagged if id(t[2]) in keep]
 
 
 def _default_page_select(_file_key: Optional[str], page_number: int) -> None:
     st.session_state["selected_page_num"] = page_number
+    st.session_state["preview_view_rotation_deg"] = 0
 
 
 def render_error_table_panel(
@@ -259,13 +316,10 @@ def render_error_table_panel(
     empty_message: Optional[Tuple[str, str]] = None,
 ) -> None:
     """
-    Hiển thị Panel bên trái: 'Danh sách trang có lỗi' gồm:
-    - Hàng Filter Pills: Tất cả | Sọc | Lẫn trang | Xoay
-    - Bảng 6 cột chuẩn xác: Trang | Lỗi sọc | Lẫn trang | Xoay | Trạng thái | Xem
-    - Highlight xanh nhạt toàn bộ hàng đang được chọn
-    - Phân trang khi số hàng > 5
-    Khi quét nhiều PDF (`row_files` = (mã tệp, đường dẫn hiển thị) song song với `problem_rows`):
-    thêm bộ lọc 'Tệp PDF' (`render_file_filter`) và cột 'Tệp PDF'; chọn dòng gọi `on_select(mã tệp, trang)`.
+    Hiển thị Panel bên trái (Mục 9): 'Kết quả kiểm tra' gồm:
+    - Tiêu đề + Icon filter & Icon chọn hàng loạt bên phải
+    - 5 Filter Pills: Tất cả (n) | Sọc (n) | Lẫn trang (n) | Xoay (n) | Cần rà soát (n)
+    - Bảng 7 cột chuẩn xác: | Chọn | Trang | Sọc | Lẫn | Xoay | Trạng thái | Thao tác |
     """
     multi_file = row_files is not None
     tagged: List[Tuple[Optional[str], Optional[str], PageIssueRow]] = (
@@ -279,6 +333,7 @@ def render_error_table_panel(
     n_stripe = sum(1 for t in tagged if t[2].stripe_state != "NONE")
     n_boundary = sum(1 for t in tagged if t[2].boundary_state != "NONE")
     n_rotation = sum(1 for t in tagged if t[2].rotation_state != "NONE")
+    n_review = sum(1 for t in tagged if t[2].needs_review_now)
 
     active_filter: str = st.session_state.get("active_filter", "ALL")
     filter_defs = [
@@ -286,18 +341,52 @@ def render_error_table_panel(
         ("STRIPE", f"Sọc ({n_stripe})"),
         ("BOUNDARY", f"Lẫn trang ({n_boundary})"),
         ("ROTATION", f"Xoay ({n_rotation})"),
+        ("REVIEW", f"Cần rà soát ({n_review})"),
     ]
+    filtered_rows = _filter_tagged_rows(tagged, active_filter)
+    selected_keys_list: List[str] = list(st.session_state.get("selected_row_keys", []))
 
     with st.container(key="left_error_card"):
-        st.markdown(
-            '<div class="panel-heading">Danh sách trang có lỗi</div>',
-            unsafe_allow_html=True,
-        )
+        # Tiêu đề 'Kết quả kiểm tra' + 2 icon bên phải
+        hdr_l, hdr_r = st.columns([7.8, 2.2], vertical_alignment="center")
+        with hdr_l:
+            st.markdown(
+                '<div class="panel-heading">Kết quả kiểm tra</div>',
+                unsafe_allow_html=True,
+            )
+        with hdr_r:
+            with st.container(horizontal=True, vertical_alignment="center", key="left_panel_hdr_icons"):
+                if st.button(
+                    "",
+                    icon=":material/filter_alt:",
+                    key="btn_tbl_hdr_reset_flt",
+                    help="Đặt lại bộ lọc về Tất cả",
+                ):
+                    if active_filter != "ALL":
+                        st.session_state["active_filter"] = "ALL"
+                        st.session_state["table_page_idx"] = 0
+                        st.rerun()
+                if st.button(
+                    "",
+                    icon=":material/grid_view:",
+                    key="btn_tbl_hdr_toggle_all",
+                    disabled=(not filtered_rows),
+                    help="Chọn / Bỏ chọn tất cả các trang trong danh sách hiện tại",
+                ):
+                    all_vis_keys = [
+                        f"{fk}_{r.page_number}" if fk else f"{r.page_number}"
+                        for fk, _lbl, r in filtered_rows
+                    ]
+                    if all_vis_keys and all(k in selected_keys_list for k in all_vis_keys):
+                        st.session_state["selected_row_keys"] = []
+                    else:
+                        st.session_state["selected_row_keys"] = all_vis_keys
+                    st.rerun()
 
         if render_file_filter is not None:
             render_file_filter()
 
-        # Hàng bộ lọc dạng pill
+        # Hàng 5 bộ lọc dạng pill
         with st.container(horizontal=True, key="filter_pills_bar"):
             for f_id, f_label in filter_defs:
                 is_act = active_filter == f_id
@@ -320,21 +409,63 @@ def render_error_table_panel(
                             select_fn(new_filtered[0][0], new_filtered[0][2].page_number)
                         st.rerun()
 
-        filtered_rows = _filter_tagged_rows(tagged, active_filter)
+        # Thanh thao tác hàng loạt khi người dùng tích chọn checkbox
+        if selected_keys_list and filtered_rows:
+            with st.container(horizontal=True, vertical_alignment="center", key="batch_selection_bar"):
+                st.markdown(
+                    f'<span style="font-size:12.5px;font-weight:600;color:#0866E8;">Đã chọn {len(selected_keys_list)} trang:</span>',
+                    unsafe_allow_html=True,
+                )
+                if st.button(
+                    "Bỏ qua đã chọn",
+                    icon=":material/skip_next:",
+                    key="btn_batch_skip_selected",
+                    help="Đánh dấu bỏ qua cảnh báo cho các trang đang tích chọn",
+                ):
+                    for fk, _lbl, r in filtered_rows:
+                        sfx = f"{fk}_{r.page_number}" if fk else f"{r.page_number}"
+                        if sfx in selected_keys_list:
+                            for it in r.defect_items:
+                                st.session_state["defect_review_decisions"][f"{r.page_number}:{it.key}"] = "SKIPPED"
+                            if r.rotation_state != "NONE":
+                                st.session_state["manual_overrides"][r.page_number] = 0
+                    st.session_state["selected_row_keys"] = []
+                    st.session_state["has_unexported_changes"] = True
+                    rebuild_outputs_without_ocr()
+                    st.rerun()
+
         col_weights = (
-            [2.0, 0.80, 1.0, 1.05, 0.92, 1.62, 1.18]
+            [0.52, 1.55, 0.78, 0.75, 0.75, 0.80, 1.48, 1.15]
             if multi_file
-            else [0.90, 1.12, 1.18, 1.02, 1.82, 1.32]
+            else [0.52, 0.85, 0.82, 0.82, 0.85, 1.55, 1.18]
         )
 
         with st.container(key="error_table_wrapper"):
-            # Header bảng 6 cột
+            # Header bảng 7 cột: | ☐ | Trang ↕ | Sọc | Lẫn | Xoay | Trạng thái | Thao tác |
             with st.container(key="tbl_hdr_row"):
                 h_cols = st.columns(col_weights, gap=None, vertical_alignment="center")
-                headers = ["Trang", "Lỗi sọc", "Lẫn trang", "Xoay", "Trạng thái", "Xem"]
+                with h_cols[0]:
+                    with st.container(key="tbl_chk_cell_hdr"):
+                        all_vis_keys = [
+                            f"{fk}_{r.page_number}" if fk else f"{r.page_number}"
+                            for fk, _lbl, r in filtered_rows
+                        ]
+                        hdr_checked = bool(all_vis_keys and all(k in selected_keys_list for k in all_vis_keys))
+                        new_hdr_chk = st.checkbox(
+                            "Chọn tất cả",
+                            value=hdr_checked,
+                            key="chk_hdr_all_rows",
+                            label_visibility="collapsed",
+                            disabled=(not filtered_rows),
+                        )
+                        if new_hdr_chk != hdr_checked:
+                            st.session_state["selected_row_keys"] = all_vis_keys if new_hdr_chk else []
+                            st.rerun()
+
+                headers = ["Trang &#8597;", "Sọc", "Lẫn", "Xoay", "Trạng thái", "Thao tác"]
                 if multi_file:
-                    headers = ["Tệp PDF"] + headers
-                for col_obj, h_text in zip(h_cols, headers):
+                    headers = ["Tệp PDF", "Trang &#8597;", "Sọc", "Lẫn", "Xoay", "Trạng thái", "Thao tác"]
+                for col_obj, h_text in zip(h_cols[1:], headers):
                     col_obj.markdown(
                         f'<div class="tbl-hdr-cell">{h_text}</div>',
                         unsafe_allow_html=True,
@@ -359,7 +490,7 @@ def render_error_table_panel(
                         """
                         <div class="tbl-empty-state">
                           <div class="tbl-empty-title">Chưa có dữ liệu kiểm tra</div>
-                          <div class="tbl-empty-sub">Tải lên một file PDF ở khung phía trên để hệ thống tự động quét và liệt kê các trang có lỗi tại đây.</div>
+                          <div class="tbl-empty-sub">Tải lên một file PDF hoặc thư mục ở khung phía trên để hệ thống tự động quét và liệt kê các trang cần xử lý.</div>
                         </div>
                         """
                     ),
@@ -370,7 +501,7 @@ def render_error_table_panel(
                     clean_html(
                         f"""
                         <div class="tbl-empty-state">
-                          <div class="tbl-empty-title" style="color:#079B60;">Không phát hiện trang lỗi nào</div>
+                          <div class="tbl-empty-title" style="color:#15965D;">Không phát hiện trang lỗi nào</div>
                           <div class="tbl-empty-sub">Toàn bộ {total_doc_pages} trang của tài liệu đều bình thường (không bị sọc, không lẫn trang, đúng hướng xoay).</div>
                         </div>
                         """
@@ -383,7 +514,7 @@ def render_error_table_panel(
                         """
                         <div class="tbl-empty-state">
                           <div class="tbl-empty-title">Không có trang nào thuộc bộ lọc này</div>
-                          <div class="tbl-empty-sub">Hãy chọn bộ lọc "Tất cả" hoặc nhóm lỗi khác để xem các trang cần kiểm tra.</div>
+                          <div class="tbl-empty-sub">Hãy chọn bộ lọc "Tất cả" hoặc nhóm lỗi khác để xem các trang cần xử lý.</div>
                         </div>
                         """
                     ),
@@ -413,87 +544,104 @@ def render_error_table_panel(
                     )
 
                     stripe_html = _render_defect_indicator_html(
-                        row.stripe_state, row.stripe_tooltip
+                        row.stripe_state, row.stripe_tooltip, kind="stripe"
                     )
                     boundary_html = _render_defect_indicator_html(
-                        row.boundary_state, row.boundary_tooltip
+                        row.boundary_state, row.boundary_tooltip, kind="boundary"
                     )
-                    if row.rotation_state == "NONE":
-                        rot_html = '<span class="tbl-dash">&mdash;</span>'
-                    else:
-                        safe_rtip = html.escape(row.rotation_tooltip)
-                        rot_html = (
-                            f'<span class="tbl-rot-txt" title="{safe_rtip}">'
-                            f"{html.escape(row.rotation_display)}</span>"
-                        )
-
-                    status_html = (
-                        f'<span class="status-pill {row.status_tone}">'
-                        f"{html.escape(row.status_label)}</span>"
+                    rot_html = _render_defect_indicator_html(
+                        row.rotation_state,
+                        f"{row.rotation_display} · {row.rotation_tooltip}".strip(" ·"),
+                        kind="rotation",
                     )
+                    status_html = _render_status_pill_html(row.status_tone, row.status_label)
 
                     with st.container(key=row_key):
                         r_cols = st.columns(
                             col_weights, gap=None, vertical_alignment="center"
                         )
+                        # Cột 1: Chọn (Checkbox)
+                        with r_cols[0]:
+                            with st.container(key=f"tbl_chk_cell_{sfx}"):
+                                is_chk = sfx in selected_keys_list
+                                new_chk = st.checkbox(
+                                    f"Chọn trang {pno}",
+                                    value=is_chk,
+                                    key=f"chk_row_item_{sfx}",
+                                    label_visibility="collapsed",
+                                )
+                                if new_chk and not is_chk:
+                                    selected_keys_list.append(sfx)
+                                    st.session_state["selected_row_keys"] = selected_keys_list
+                                    st.rerun()
+                                elif not new_chk and is_chk:
+                                    selected_keys_list.remove(sfx)
+                                    st.session_state["selected_row_keys"] = selected_keys_list
+                                    st.rerun()
+
+                        rem_cols = r_cols[1:]
                         if multi_file:
                             safe_lbl = html.escape(file_label or "")
-                            r_cols[0].markdown(
+                            rem_cols[0].markdown(
                                 f'<div class="tbl-data-cell tbl-file-cell" title="{safe_lbl}">{safe_lbl}</div>',
                                 unsafe_allow_html=True,
                             )
-                            r_cols = r_cols[1:]
-                        r_cols[0].markdown(
+                            rem_cols = rem_cols[1:]
+
+                        rem_cols[0].markdown(
                             f'<div class="tbl-data-cell"><span class="tbl-page-num">{pno}</span></div>',
                             unsafe_allow_html=True,
                         )
-                        r_cols[1].markdown(
+                        rem_cols[1].markdown(
                             f'<div class="tbl-data-cell">{stripe_html}</div>',
                             unsafe_allow_html=True,
                         )
-                        r_cols[2].markdown(
+                        rem_cols[2].markdown(
                             f'<div class="tbl-data-cell">{boundary_html}</div>',
                             unsafe_allow_html=True,
                         )
-                        r_cols[3].markdown(
+                        rem_cols[3].markdown(
                             f'<div class="tbl-data-cell">{rot_html}</div>',
                             unsafe_allow_html=True,
                         )
-                        r_cols[4].markdown(
+                        rem_cols[4].markdown(
                             f'<div class="tbl-data-cell">{status_html}</div>',
                             unsafe_allow_html=True,
                         )
-                        with r_cols[5]:
-                            with st.container(key=f"tbl_action_cell_{sfx}"):
+                        with rem_cols[5]:
+                            with st.container(horizontal=True, key=f"tbl_action_cell_{sfx}"):
                                 if st.button(
-                                    "Xem",
+                                    "",
                                     icon=":material/visibility:",
                                     key=f"btn_view_p_{sfx}",
+                                    help=f"Xem trang {pno}",
                                 ):
                                     select_fn(file_key, pno)
                                     st.session_state["action_feedback_msg"] = None
-                                    # Nếu bộ lọc đang chọn 1 loại lỗi cụ thể, ưu tiên mở đúng lỗi đó
                                     if active_filter == "BOUNDARY" and any(
                                         it.key == "boundary" for it in row.defect_items
                                     ):
-                                        st.session_state[
-                                            "selected_defect_key_by_page"
-                                        ][pno] = "boundary"
+                                        st.session_state["selected_defect_key_by_page"][pno] = "boundary"
                                     elif active_filter == "STRIPE" and any(
                                         it.key == "stripe" for it in row.defect_items
                                     ):
-                                        st.session_state[
-                                            "selected_defect_key_by_page"
-                                        ][pno] = "stripe"
+                                        st.session_state["selected_defect_key_by_page"][pno] = "stripe"
                                     elif active_filter == "ROTATION" and any(
                                         it.key == "rotation" for it in row.defect_items
                                     ):
-                                        st.session_state[
-                                            "selected_defect_key_by_page"
-                                        ][pno] = "rotation"
+                                        st.session_state["selected_defect_key_by_page"][pno] = "rotation"
+                                    st.rerun()
+                                if st.button(
+                                    "",
+                                    icon=":material/edit:",
+                                    key=f"btn_edit_p_{sfx}",
+                                    help=f"Sửa thủ công trang {pno}",
+                                ):
+                                    select_fn(file_key, pno)
+                                    st.session_state["open_manual_edit_page"] = pno
                                     st.rerun()
 
-        # Thanh phân trang nhỏ gọn khi có nhiều hơn 5 trang lỗi
+        # Thanh phân trang gọn cuối bảng khi nhiều hàng
         if has_scanned and len(filtered_rows) > ROWS_PER_PAGE:
             total_filtered = len(filtered_rows)
             total_tbl_pages = max(1, math.ceil(total_filtered / ROWS_PER_PAGE))
@@ -505,7 +653,7 @@ def render_error_table_panel(
                 key="tbl_pagination_bar",
             ):
                 if st.button(
-                    "‹ Trang trước",
+                    "‹ Trước",
                     disabled=(cur_pg_idx <= 0),
                     key="pg_nav_prev",
                 ):
@@ -513,14 +661,14 @@ def render_error_table_panel(
                     st.rerun()
 
                 st.markdown(
-                    f'<span style="font-size:13px;color:#70849F;font-weight:500;">'
+                    f'<span style="font-size:12.5px;color:#667892;font-weight:500;">'
                     f"Trang bảng {cur_pg_idx + 1}/{total_tbl_pages} &middot; "
-                    f"Tổng {total_filtered} trang lỗi</span>",
+                    f"Tổng {total_filtered} trang cần xử lý</span>",
                     unsafe_allow_html=True,
                 )
 
                 if st.button(
-                    "Trang sau ›",
+                    "Tiếp ›",
                     disabled=(cur_pg_idx >= total_tbl_pages - 1),
                     key="pg_nav_next",
                 ):

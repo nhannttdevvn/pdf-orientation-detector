@@ -868,6 +868,43 @@ def _apply_skip_action(
 # ==============================================================================
 
 
+@st.dialog("Xem toàn màn hình trang PDF", width="large")
+def _open_fullscreen_preview_dialog(
+    stage_html: str,
+    page_number: int,
+    total_pages: int,
+    defect_title: str,
+) -> None:
+    st.markdown(f"**Trang {page_number} / {total_pages}** — {defect_title}")
+    st.markdown(
+        clean_html(stage_html.replace('class="doc-preview-stage"', 'class="doc-preview-stage fullscreen-stage"')),
+        unsafe_allow_html=True,
+    )
+
+
+SVG_INFO_PAGE = """
+<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+  <rect x="3" y="1.8" width="10" height="12.4" rx="1.6" stroke="#64748B" stroke-width="1.4"/>
+  <line x1="5.5" y1="5.5" x2="10.5" y2="5.5" stroke="#64748B" stroke-width="1.3" stroke-linecap="round"/>
+  <line x1="5.5" y1="8.2" x2="10.5" y2="8.2" stroke="#64748B" stroke-width="1.3" stroke-linecap="round"/>
+</svg>
+"""
+
+SVG_INFO_LAYERS = """
+<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+  <path d="M8 2L14 5.2L8 8.4L2 5.2L8 2Z" stroke="#64748B" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M2 8.2L8 11.4L14 8.2" stroke="#64748B" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M2 11L8 14.2L14 11" stroke="#64748B" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+"""
+
+SVG_INFO_PULSE = """
+<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+  <path d="M1.5 8H4.2L6.2 3.5L9.5 12.5L11.5 8H14.5" stroke="#64748B" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+"""
+
+
 def render_preview_panel(
     selected_row: Optional[PageIssueRow],
     active_pdf_path: Optional[Path],
@@ -875,91 +912,167 @@ def render_preview_panel(
     total_pages: int = 0,
     file_name: str = "document.pdf",
     scan_dpi: int = 160,
+    problem_rows: Optional[List[PageIssueRow]] = None,
 ) -> None:
-    """Hiển thị Panel bên phải: 'Xem trước trang lỗi' chuẩn xác theo thiết kế."""
+    """Hiển thị Panel bên phải (Mục 10): 'Xem trang [số trang]', Toolbar, Ảnh Preview & Thông tin trang."""
     preview_tab: str = st.session_state.get("preview_tab", "ORIGINAL")
+    zoom_pct: int = int(st.session_state.get("preview_zoom_pct", 100))
+    view_rot_deg: int = int(st.session_state.get("preview_view_rotation_deg", 0))
+
+    pno_display = selected_row.page_number if selected_row is not None else 0
+    heading_txt = f"Xem trang {pno_display}" if pno_display > 0 else "Xem trang"
+
+    # Danh sách trang lỗi để điều hướng Trang trước / Trang tiếp trên Toolbar
+    nav_rows: List[PageIssueRow] = problem_rows if problem_rows is not None else (
+        build_problem_page_rows(st.session_state.get("pipeline_result"))
+    )
+    nav_pages = [r.page_number for r in nav_rows]
+    cur_nav_idx = nav_pages.index(pno_display) if pno_display in nav_pages else -1
+
+    has_valid_page = (
+        selected_row is not None
+        and active_pdf_path is not None
+        and file_hash is not None
+        and bool(selected_row.defect_items)
+    )
+    can_prev = has_valid_page and cur_nav_idx > 0
+    can_next = has_valid_page and 0 <= cur_nav_idx < len(nav_pages) - 1
+    counter_txt = f"{pno_display} / {total_pages}" if (has_valid_page and total_pages > 0) else "0 / 0"
 
     with st.container(key="right_preview_card"):
-        # 10.1. Header + 2 Tabs 'Bản gốc' / 'Bản đề xuất'
+        # 10.1 & 10.2. Thanh Header kết hợp Toolbar trên cùng 1 hàng ngang chuẩn ảnh tham chiếu:
+        # Xem trang [số]   <  4 / 128  >     🔍-  🔍+  ⛶  ↻  ↗↙
         with st.container(key="preview_hdr_row"):
-            h_left, h_right = st.columns([5.4, 4.6], vertical_alignment="center")
+            h_left, h_right = st.columns([2.8, 7.2], vertical_alignment="center")
             with h_left:
                 st.markdown(
-                    '<div class="panel-heading">Xem trước trang lỗi</div>',
+                    f'<div class="panel-heading">{html.escape(heading_txt)}</div>',
                     unsafe_allow_html=True,
                 )
             with h_right:
-                with st.container(horizontal=True, key="preview_tabs_group"):
-                    orig_key = (
-                        "ptab_act_orig"
-                        if preview_tab == "ORIGINAL"
-                        else "ptab_inact_orig"
+                with st.container(horizontal=True, vertical_alignment="center", key="preview_toolbar_bar"):
+                    if st.button(
+                        "",
+                        icon=":material/chevron_left:",
+                        key="ptb_prev_page",
+                        disabled=not can_prev,
+                        help="Trang lỗi trước đó",
+                    ):
+                        st.session_state["selected_page_num"] = nav_pages[cur_nav_idx - 1]
+                        st.session_state["preview_view_rotation_deg"] = 0
+                        st.rerun()
+
+                    st.markdown(
+                        f'<span class="ptb-page-counter">{html.escape(counter_txt)}</span>',
+                        unsafe_allow_html=True,
                     )
-                    prop_key = (
-                        "ptab_act_prop"
-                        if preview_tab == "PROPOSED"
-                        else "ptab_inact_prop"
+
+                    if st.button(
+                        "",
+                        icon=":material/chevron_right:",
+                        key="ptb_next_page",
+                        disabled=not can_next,
+                        help="Trang lỗi tiếp theo",
+                    ):
+                        st.session_state["selected_page_num"] = nav_pages[cur_nav_idx + 1]
+                        st.session_state["preview_view_rotation_deg"] = 0
+                        st.rerun()
+
+                    if st.button(
+                        "",
+                        icon=":material/remove_circle_outline:",
+                        key="ptb_zoom_out",
+                        disabled=(not has_valid_page or zoom_pct <= 60),
+                        help="Thu nhỏ ảnh xem trước",
+                    ):
+                        st.session_state["preview_zoom_pct"] = max(60, zoom_pct - 20)
+                        st.rerun()
+
+                    if st.button(
+                        "",
+                        icon=":material/add_circle_outline:",
+                        key="ptb_zoom_in",
+                        disabled=(not has_valid_page or zoom_pct >= 180),
+                        help="Phóng to ảnh xem trước",
+                    ):
+                        st.session_state["preview_zoom_pct"] = min(180, zoom_pct + 20)
+                        st.rerun()
+
+                    if st.button(
+                        "",
+                        icon=":material/crop_free:",
+                        key="ptb_fit_view",
+                        disabled=not has_valid_page,
+                        help="Fit khung nhìn mặc định (100%)",
+                    ):
+                        st.session_state["preview_zoom_pct"] = 100
+                        st.session_state["preview_view_rotation_deg"] = 0
+                        st.rerun()
+
+                    if st.button(
+                        "",
+                        icon=":material/refresh:",
+                        key="ptb_rotate_view",
+                        disabled=not has_valid_page,
+                        help="Xoay góc nhìn preview +90° (chỉ xoay khung nhìn tạm thời, KHÔNG sửa góc xoay của file PDF)",
+                    ):
+                        st.session_state["preview_view_rotation_deg"] = (view_rot_deg + 90) % 360
+                        st.rerun()
+
+                    fullscreen_clicked = st.button(
+                        "",
+                        icon=":material/open_in_full:",
+                        key="ptb_fullscreen",
+                        disabled=not has_valid_page,
+                        help="Xem toàn màn hình trang PDF",
                     )
-                    if st.button("Bản gốc", key=orig_key):
-                        if preview_tab != "ORIGINAL":
-                            st.session_state["preview_tab"] = "ORIGINAL"
-                            st.rerun()
-                    if st.button("Bản đề xuất", key=prop_key):
-                        if preview_tab != "PROPOSED":
-                            st.session_state["preview_tab"] = "PROPOSED"
-                            st.rerun()
 
         # Trường hợp chưa chọn trang hoặc tài liệu không có lỗi
-        if (
-            selected_row is None
-            or active_pdf_path is None
-            or file_hash is None
-            or not selected_row.defect_items
-        ):
-            st.markdown(
-                clean_html(
-                    """
-                    <div class="doc-preview-stage">
-                      <div style="text-align:center;color:#70849F;font-size:13.5px;padding:0 20px;">
-                        Chọn một trang lỗi ở bảng bên trái để xem ảnh trang và vùng lỗi chi tiết.
-                      </div>
-                    </div>
-                    <div class="error-detail-card">
-                      <div class="error-detail-row"><span class="error-detail-label">Trang:</span><span class="error-detail-val">&mdash;</span></div>
-                      <div class="error-detail-row"><span class="error-detail-label">Lỗi:</span><span class="error-detail-val">Chưa chọn trang lỗi</span></div>
-                      <div class="error-detail-row"><span class="error-detail-label">Trạng thái:</span><span class="error-detail-val">&mdash;</span></div>
-                      <div class="error-detail-row"><span class="error-detail-label">Đề xuất:</span><span class="error-detail-val">&mdash;</span></div>
-                    </div>
-                    """
-                ),
-                unsafe_allow_html=True,
-            )
-            with st.container(key="preview_actions_bar"):
-                b1, b2, b3 = st.columns(3)
-                with b1:
-                    st.button(
-                        "Chấp nhận",
-                        icon=":material/check:",
-                        disabled=True,
-                        width="stretch",
-                        key="act_accept",
-                    )
-                with b2:
-                    st.button(
-                        "Bỏ qua",
-                        icon=":material/skip_next:",
-                        disabled=True,
-                        width="stretch",
-                        key="act_skip",
-                    )
-                with b3:
-                    st.button(
-                        "Sửa thủ công",
-                        icon=":material/edit:",
-                        disabled=True,
-                        width="stretch",
-                        key="act_manual",
-                    )
+        if not has_valid_page or selected_row is None or active_pdf_path is None or file_hash is None:
+            col_stage_empty, col_info_empty = st.columns([6.1, 3.9], vertical_alignment="top")
+            with col_stage_empty:
+                st.markdown(
+                    clean_html(
+                        """
+                        <div class="doc-preview-stage">
+                          <div style="text-align:center;color:#64748B;font-size:13px;padding:0 16px;">
+                            Chọn một trang ở bảng Kết quả kiểm tra bên trái để xem ảnh trang PDF và vùng lỗi chi tiết.
+                          </div>
+                        </div>
+                        """
+                    ),
+                    unsafe_allow_html=True,
+                )
+            with col_info_empty:
+                st.markdown(
+                    clean_html(
+                        f"""
+                        <div class="error-detail-card">
+                          <div class="error-detail-heading">Thông tin trang</div>
+                          <div class="error-detail-row">
+                            <span class="error-detail-label">{SVG_INFO_PAGE}<span>Trang</span></span>
+                            <span class="error-detail-val">&mdash;</span>
+                          </div>
+                          <div class="error-detail-row">
+                            <span class="error-detail-label">{SVG_INFO_LAYERS}<span>Loại lỗi</span></span>
+                            <span class="error-detail-val"><span class="status-pill gray">Chưa chọn</span></span>
+                          </div>
+                          <div class="error-detail-row">
+                            <span class="error-detail-label">{SVG_INFO_PULSE}<span>Trạng thái</span></span>
+                            <span class="error-detail-val">&mdash;</span>
+                          </div>
+                        </div>
+                        """
+                    ),
+                    unsafe_allow_html=True,
+                )
+                with st.container(key="preview_actions_bar"):
+                    with st.container(key="act_accept"):
+                        st.button("Chấp nhận", icon=":material/check:", disabled=True, width="stretch", key="btn_act_accept_dis")
+                    with st.container(key="act_skip"):
+                        st.button("Bỏ qua", icon=":material/fast_forward:", disabled=True, width="stretch", key="btn_act_skip_dis")
+                    with st.container(key="act_manual"):
+                        st.button("Sửa thủ công", icon=":material/edit:", disabled=True, width="stretch", key="btn_act_manual_dis")
             return
 
         pno = selected_row.page_number
@@ -974,7 +1087,18 @@ def render_preview_panel(
 
         active_item = next(it for it in items if it.key == cur_def_key)
 
-        # 10.2. Vùng ảnh xem trước thật (220px) + Overlay tọa độ thực tế
+        # Kiểm tra nếu người dùng bấm icon Sửa trong cột Thao tác của bảng
+        open_edit_pno = st.session_state.get("open_manual_edit_page")
+        if open_edit_pno == pno:
+            st.session_state["open_manual_edit_page"] = None
+            _open_manual_edit_dialog(
+                row=selected_row,
+                active_defect_key=active_item.key,
+                file_name=file_name,
+                total_pages=total_pages,
+            )
+
+        # 10.3. Sinh HTML ảnh xem trước thật + Overlay tọa độ thực tế
         if preview_tab == "PROPOSED":
             stage_html = _render_proposed_preview_html(
                 pdf_path=active_pdf_path,
@@ -997,129 +1121,192 @@ def render_preview_panel(
                 active_item=active_item,
                 scan_dpi=scan_dpi,
             )
-        st.markdown(clean_html(stage_html), unsafe_allow_html=True)
 
-        # Nếu trang có từ 2 lỗi trở lên, hiển thị chip nhỏ gọn để chọn xác nhận riêng từng lỗi
-        if len(items) > 1:
-            with st.container(horizontal=True, key="multi_defect_chips"):
-                for it in items:
-                    is_cur = it.key == active_item.key
-                    ckey = (
-                        f"mdchip_act_{pno}_{it.key}"
-                        if is_cur
-                        else f"mdchip_inact_{pno}_{it.key}"
-                    )
-                    if st.button(it.short_chip, key=ckey):
-                        sel_map[pno] = it.key
-                        st.session_state["action_feedback_msg"] = None
-                        st.rerun()
-
-        # Trạng thái hiển thị cho đúng lỗi đang xem trong Error Detail Box
-        item_dec = st.session_state.get("defect_review_decisions", {}).get(
-            f"{pno}:{active_item.key}"
-        )
-        if item_dec == "ACCEPTED":
-            det_status_txt, det_status_tone = "Đã chấp nhận", "green"
-        elif item_dec == "MANUAL":
-            det_status_txt, det_status_tone = "Đã sửa thủ công", "green"
-        elif item_dec == "SKIPPED":
-            det_status_txt, det_status_tone = "Đã bỏ qua", "gray"
-        else:
-            det_status_txt, det_status_tone = (
-                selected_row.status_label,
-                selected_row.status_tone,
+        if fullscreen_clicked:
+            _open_fullscreen_preview_dialog(
+                stage_html=stage_html,
+                page_number=pno,
+                total_pages=total_pages,
+                defect_title=active_item.defect_title,
             )
 
-        # 10.3. Error Detail Box (Đúng 4 hàng: Trang | Lỗi | Trạng thái | Đề xuất)
-        st.markdown(
-            clean_html(
-                f"""
-                <div class="error-detail-card">
-                  <div class="error-detail-row">
-                    <span class="error-detail-label">Trang:</span>
-                    <span class="error-detail-val">{pno}</span>
-                  </div>
-                  <div class="error-detail-row">
-                    <span class="error-detail-label">Lỗi:</span>
-                    <span class="error-detail-val">{html.escape(active_item.defect_title)}</span>
-                  </div>
-                  <div class="error-detail-row">
-                    <span class="error-detail-label">Trạng thái:</span>
-                    <span class="error-detail-val">
-                      <span class="status-pill {det_status_tone}">{html.escape(det_status_txt)}</span>
-                    </span>
-                  </div>
-                  <div class="error-detail-row">
-                    <span class="error-detail-label">Đề xuất:</span>
-                    <span class="error-detail-val">{html.escape(active_item.proposal_text)}</span>
-                  </div>
-                </div>
-                """
-            ),
-            unsafe_allow_html=True,
-        )
+        # Áp dụng thu phóng & xoay góc nhìn preview (không sửa PDF)
+        transform_parts = []
+        if zoom_pct != 100:
+            transform_parts.append(f"scale({zoom_pct / 100.0:.2f})")
+        if view_rot_deg != 0:
+            transform_parts.append(f"rotate({view_rot_deg}deg)")
+        if transform_parts:
+            tf_css = " ".join(transform_parts)
+            stage_html = stage_html.replace(
+                'class="doc-sheet-frame',
+                f'style="transform:{tf_css};transform-origin:center center;transition:transform 0.15s ease;" class="doc-sheet-frame',
+            )
 
-        # 10.4. Hàng 3 nút hành động: Chấp nhận | Bỏ qua | Sửa thủ công
-        with st.container(key="preview_actions_bar"):
-            b1, b2, b3 = st.columns(3)
-            with b1:
-                if st.button(
-                    "Chấp nhận",
-                    icon=":material/check:",
-                    disabled=not active_item.can_accept,
-                    help=active_item.accept_disabled_reason
-                    or "Áp dụng đề xuất xử lý cho lỗi này",
-                    width="stretch",
-                    key="act_accept",
-                ):
-                    _apply_accept_action(
-                        row=selected_row,
-                        active_item=active_item,
-                        file_name=file_name,
-                        total_pages=total_pages,
-                    )
-                    st.rerun()
+        # Chia 2 cột ngang trong Panel Phải: Trái (Ảnh Preview 61%) | Phải (Thông tin trang + 3 nút 39%)
+        col_stage, col_side_info = st.columns([6.1, 3.9], vertical_alignment="top")
 
-            with b2:
-                if st.button(
-                    "Bỏ qua",
-                    icon=":material/skip_next:",
-                    help="Bỏ qua cảnh báo lỗi này và giữ nguyên trang trong file xuất",
-                    width="stretch",
-                    key="act_skip",
-                ):
-                    _apply_skip_action(
-                        row=selected_row,
-                        active_item=active_item,
-                        file_name=file_name,
-                    )
-                    st.rerun()
+        with col_stage:
+            st.markdown(clean_html(stage_html), unsafe_allow_html=True)
+            if zoom_pct != 100 or view_rot_deg != 0:
+                notes = []
+                if zoom_pct != 100:
+                    notes.append(f"Zoom: {zoom_pct}%")
+                if view_rot_deg != 0:
+                    notes.append(f"Góc nhìn preview: +{view_rot_deg}° (không sửa PDF)")
+                st.caption(" · ".join(notes))
 
-            with b3:
-                if st.button(
-                    "Sửa thủ công",
-                    icon=":material/edit:",
-                    disabled=not active_item.can_manual_edit,
-                    help=active_item.manual_disabled_reason
-                    or "Tùy chỉnh góc xoay hoặc vị trí đường cắt thủ công",
-                    width="stretch",
-                    key="act_manual",
-                ):
-                    _open_manual_edit_dialog(
-                        row=selected_row,
-                        active_defect_key=active_item.key,
-                        file_name=file_name,
-                        total_pages=total_pages,
-                    )
+        with col_side_info:
+            # Chuyển đổi nhanh Bản gốc / Bản đề xuất nhỏ gọn
+            with st.container(horizontal=True, key="preview_tabs_group"):
+                orig_key = (
+                    "ptab_act_orig"
+                    if preview_tab == "ORIGINAL"
+                    else "ptab_inact_orig"
+                )
+                prop_key = (
+                    "ptab_act_prop"
+                    if preview_tab == "PROPOSED"
+                    else "ptab_inact_prop"
+                )
+                if st.button("Bản gốc", key=orig_key):
+                    if preview_tab != "ORIGINAL":
+                        st.session_state["preview_tab"] = "ORIGINAL"
+                        st.rerun()
+                if st.button("Bản đề xuất", key=prop_key):
+                    if preview_tab != "PROPOSED":
+                        st.session_state["preview_tab"] = "PROPOSED"
+                        st.rerun()
 
-        # Thông báo ngắn gọn khi phương án tự động bị khóa hoặc vừa áp dụng thao tác
-        fb_msg = st.session_state.get("action_feedback_msg")
-        if not active_item.can_accept and active_item.accept_disabled_reason:
-            st.caption(f"ℹ️ {active_item.accept_disabled_reason}")
-        elif not active_item.can_manual_edit and active_item.manual_disabled_reason:
-            st.caption(f"ℹ️ {active_item.manual_disabled_reason}")
-        elif fb_msg:
-            st.caption(f"✓ {fb_msg}")
+            # Nếu trang có từ 2 lỗi trở lên, hiển thị chip nhỏ gọn để chọn xác nhận riêng từng lỗi
+            if len(items) > 1:
+                with st.container(horizontal=True, key="multi_defect_chips"):
+                    for it in items:
+                        is_cur = it.key == active_item.key
+                        ckey = (
+                            f"mdchip_act_{pno}_{it.key}"
+                            if is_cur
+                            else f"mdchip_inact_{pno}_{it.key}"
+                        )
+                        if st.button(it.short_chip, key=ckey):
+                            sel_map[pno] = it.key
+                            st.session_state["action_feedback_msg"] = None
+                            st.rerun()
+
+            # Trạng thái hiển thị cho đúng lỗi đang xem trong Thông tin trang
+            item_dec = st.session_state.get("defect_review_decisions", {}).get(
+                f"{pno}:{active_item.key}"
+            )
+            if item_dec in ("ACCEPTED", "MANUAL"):
+                det_status_txt, det_status_tone = "Đã sửa", "green"
+            elif item_dec == "SKIPPED":
+                det_status_txt, det_status_tone = "Đã bỏ qua", "gray"
+            else:
+                det_status_txt, det_status_tone = (
+                    selected_row.status_label,
+                    selected_row.status_tone,
+                )
+
+            defect_pill_tone = (
+                "red"
+                if active_item.key == "stripe"
+                else ("orange" if active_item.key == "boundary" else "orange")
+            )
+
+            # Khối Thông tin trang chuẩn ảnh tham chiếu (Trang | Loại lỗi | Trạng thái | Đề xuất)
+            st.markdown(
+                clean_html(
+                    f"""
+                    <div class="error-detail-card">
+                      <div class="error-detail-heading">Thông tin trang</div>
+                      <div class="error-detail-row">
+                        <span class="error-detail-label">{SVG_INFO_PAGE}<span>Trang</span></span>
+                        <span class="error-detail-val">{pno}</span>
+                      </div>
+                      <div class="error-detail-row">
+                        <span class="error-detail-label">{SVG_INFO_LAYERS}<span>Loại lỗi</span></span>
+                        <span class="error-detail-val">
+                          <span class="status-pill {defect_pill_tone}" title="{html.escape(active_item.defect_title)}">{html.escape(active_item.short_chip)}</span>
+                        </span>
+                      </div>
+                      <div class="error-detail-row">
+                        <span class="error-detail-label">{SVG_INFO_PULSE}<span>Trạng thái</span></span>
+                        <span class="error-detail-val">
+                          <span class="status-pill {det_status_tone}">{html.escape(det_status_txt)}</span>
+                        </span>
+                      </div>
+                      <div class="error-detail-row proposal-row">
+                        <span class="error-detail-label">Đề xuất:</span>
+                        <span class="error-detail-val proposal-val">{html.escape(active_item.proposal_text)}</span>
+                      </div>
+                    </div>
+                    """
+                ),
+                unsafe_allow_html=True,
+            )
+
+            # Ba nút hành động xếp dọc dưới Thông tin trang:
+            # 1. Chấp nhận — xanh dương
+            # 2. Bỏ qua — xám nhạt
+            # 3. Sửa thủ công — nền trắng viền xanh/xám
+            with st.container(key="preview_actions_bar"):
+                with st.container(key="act_accept"):
+                    if st.button(
+                        "Chấp nhận",
+                        icon=":material/check:",
+                        disabled=not active_item.can_accept,
+                        help=active_item.accept_disabled_reason
+                        or "Áp dụng đề xuất xử lý cho lỗi này",
+                        width="stretch",
+                        key="btn_act_accept_main",
+                    ):
+                        _apply_accept_action(
+                            row=selected_row,
+                            active_item=active_item,
+                            file_name=file_name,
+                            total_pages=total_pages,
+                        )
+                        st.rerun()
+
+                with st.container(key="act_skip"):
+                    if st.button(
+                        "Bỏ qua",
+                        icon=":material/fast_forward:",
+                        help="Bỏ qua cảnh báo lỗi này và giữ nguyên trang trong file xuất",
+                        width="stretch",
+                        key="btn_act_skip_main",
+                    ):
+                        _apply_skip_action(
+                            row=selected_row,
+                            active_item=active_item,
+                            file_name=file_name,
+                        )
+                        st.rerun()
+
+                with st.container(key="act_manual"):
+                    if st.button(
+                        "Sửa thủ công",
+                        icon=":material/edit:",
+                        disabled=not active_item.can_manual_edit,
+                        help=active_item.manual_disabled_reason
+                        or "Tùy chỉnh góc xoay hoặc vị trí đường cắt thủ công",
+                        width="stretch",
+                        key="btn_act_manual_main",
+                    ):
+                        _open_manual_edit_dialog(
+                            row=selected_row,
+                            active_defect_key=active_item.key,
+                            file_name=file_name,
+                            total_pages=total_pages,
+                        )
+
+            fb_msg = st.session_state.get("action_feedback_msg")
+            if not active_item.can_accept and active_item.accept_disabled_reason:
+                st.caption(f"ℹ️ {active_item.accept_disabled_reason}")
+            elif not active_item.can_manual_edit and active_item.manual_disabled_reason:
+                st.caption(f"ℹ️ {active_item.manual_disabled_reason}")
+            elif fb_msg:
+                st.caption(f"✓ {fb_msg}")
 
 
 def render_preview_and_export_section(

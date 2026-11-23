@@ -61,15 +61,13 @@ from frontend.components.secret_tab_view import compute_secret_summary
 from frontend.components import (
     build_secret_flagged_rows,
     render_error_table_panel,
-    render_footer_bar,
     render_header_bar,
     render_preview_panel,
     render_progress_html,
     render_secret_preview_panel,
     render_secret_results_table,
-    render_secret_summary_cards,
     render_secret_upload_card,
-    render_summary_cards,
+    render_sidebar,
     render_upload_and_progress_card,
 )
 from frontend.state.state_manager import (
@@ -441,8 +439,6 @@ def _render_scan_batch_body(batch: BatchState) -> None:
     sel_pno = st.session_state.get("selected_page_num")
     selected_row = next((r for r in active_rows if r.page_number == sel_pno), None)
 
-    render_summary_cards(stats)
-
     def _on_select(file_key: Optional[str], pno: int) -> None:
         if file_key and file_key != batch.active_key:
             activate_entry(TAB_SCAN, batch, file_key, reset_table_page=False)
@@ -450,7 +446,7 @@ def _render_scan_batch_body(batch: BatchState) -> None:
 
     active_pdf_str: Optional[str] = st.session_state.get("input_pdf_path")
     with st.container(key="main_two_col_row"):
-        col_table, col_preview = st.columns([61.5, 38.5], vertical_alignment="top")
+        col_table, col_preview = st.columns([51, 49], vertical_alignment="top")
         with col_table:
             render_error_table_panel(
                 problem_rows=rows,
@@ -470,11 +466,12 @@ def _render_scan_batch_body(batch: BatchState) -> None:
                 total_pages=result.doc_info.page_count if result is not None else 0,
                 file_name=st.session_state.get("display_file_name") or "document.pdf",
                 scan_dpi=result.config.render_dpi if result is not None else 160,
+                problem_rows=active_rows,
             )
 
 
 def _render_secret_batch_body(batch: BatchState) -> None:
-    """Tab 2 khi quét thư mục: thẻ thống kê, bảng (bộ lọc + cột Tệp PDF) và xem trước file đang chọn."""
+    """Tab 2 khi quét thư mục: bảng (bộ lọc + cột Tệp PDF) và xem trước file đang chọn (không Summary Cards)."""
     _ensure_active_entry(TAB_SECRET, batch)
     sync_active_snapshot(TAB_SECRET, batch)
     scope = scope_entries(batch)
@@ -509,8 +506,6 @@ def _render_secret_batch_body(batch: BatchState) -> None:
         else None
     )
 
-    render_secret_summary_cards(doc_result, stats=stats)
-
     def _on_select(file_key: Optional[str], pno: int) -> None:
         if file_key and file_key != batch.active_key:
             activate_entry(TAB_SECRET, batch, file_key, reset_table_page=False)
@@ -518,7 +513,7 @@ def _render_secret_batch_body(batch: BatchState) -> None:
 
     sec_pdf_str: Optional[str] = st.session_state.get("secret_pdf_path")
     with st.container(key="main_two_col_row"):
-        col_table, col_preview = st.columns([61.5, 38.5], vertical_alignment="top")
+        col_table, col_preview = st.columns([51, 49], vertical_alignment="top")
         with col_table:
             render_secret_results_table(
                 flagged_rows=rows,
@@ -541,7 +536,7 @@ def _render_secret_batch_body(batch: BatchState) -> None:
 
 
 def _render_scan_quality_tab() -> None:
-    """Hiển thị toàn bộ nội dung Tab 1 — Kiểm tra & sửa lỗi PDF."""
+    """Hiển thị toàn bộ nội dung Chế độ 1 — Kiểm tra lỗi PDF (không có Summary Cards)."""
     uploaded_file, dir_files, progress_slot = render_upload_and_progress_card()
     batch = get_batch(TAB_SCAN)
 
@@ -580,7 +575,6 @@ def _render_scan_quality_tab() -> None:
     result: Optional[PipelineResult] = st.session_state.get("pipeline_result")
     has_scanned = result is not None
     problem_rows = build_problem_page_rows(result)
-    summary_stats = compute_dashboard_summary(result, problem_rows)
 
     selected_row: Optional[PageIssueRow] = None
     if problem_rows:
@@ -592,8 +586,6 @@ def _render_scan_quality_tab() -> None:
             selected_row = problem_rows[0]
             st.session_state["selected_page_num"] = selected_row.page_number
 
-    render_summary_cards(summary_stats)
-
     active_pdf_str: Optional[str] = st.session_state.get("input_pdf_path")
     active_pdf_path = Path(active_pdf_str) if active_pdf_str else None
     total_doc_pages = result.doc_info.page_count if result is not None else 0
@@ -604,7 +596,7 @@ def _render_scan_quality_tab() -> None:
     scan_dpi = result.config.render_dpi if result is not None else 160
 
     with st.container(key="main_two_col_row"):
-        col_table, col_preview = st.columns([61.5, 38.5], vertical_alignment="top")
+        col_table, col_preview = st.columns([51, 49], vertical_alignment="top")
 
         with col_table:
             render_error_table_panel(
@@ -621,11 +613,12 @@ def _render_scan_quality_tab() -> None:
                 total_pages=total_doc_pages,
                 file_name=cur_file_name,
                 scan_dpi=scan_dpi,
+                problem_rows=problem_rows,
             )
 
 
 def _render_secret_detection_tab() -> None:
-    """Hiển thị toàn bộ nội dung Tab 2 — Kiểm tra dấu độ mật."""
+    """Hiển thị toàn bộ nội dung Chế độ 2 — Dấu độ mật (không có Summary Cards)."""
     uploaded_file, dir_files, progress_slot = render_secret_upload_card()
     batch = get_batch(TAB_SECRET)
 
@@ -677,8 +670,6 @@ def _render_secret_detection_tab() -> None:
             selected_page = flagged_rows[0]
             st.session_state["secret_selected_page_num"] = selected_page.page_number
 
-    render_secret_summary_cards(doc_result)
-
     sec_pdf_str: Optional[str] = st.session_state.get("secret_pdf_path")
     sec_pdf_path = Path(sec_pdf_str) if sec_pdf_str else None
     total_doc_pages = doc_result.total_pages if doc_result is not None else 0
@@ -688,7 +679,7 @@ def _render_secret_detection_tab() -> None:
     )
 
     with st.container(key="main_two_col_row"):
-        col_table, col_preview = st.columns([61.5, 38.5], vertical_alignment="top")
+        col_table, col_preview = st.columns([51, 49], vertical_alignment="top")
 
         with col_table:
             render_secret_results_table(
@@ -712,22 +703,22 @@ def main() -> None:
         page_title="PDF Scan Quality Inspector",
         page_icon="📄",
         layout="wide",
-        initial_sidebar_state="collapsed",
+        initial_sidebar_state="expanded",
     )
     init_dashboard_state()
     inject_dashboard_styles()
 
-    # 1. HEADER BAR + 2-MODE SWITCHER
+    # 1. LEFT SIDEBAR (Cố định bên trái, nền xanh navy #142746)
+    render_sidebar()
+
+    # 2. HEADER BAR (Cao 60–64px, không có subtitle)
     render_header_bar()
 
-    # 2–4. BODY THEO CHẾ ĐỘ ĐANG CHỌN (không chạy thừa workflow còn lại)
+    # 3–5. UPLOAD AREA + FILE BAR + TWO-PANEL WORKSPACE (Không có Summary Cards)
     if st.session_state.get("active_mode", "SCAN_QUALITY") == "SECRET_DETECTION":
         _render_secret_detection_tab()
     else:
         _render_scan_quality_tab()
-
-    # 5. FOOTER INFORMATION BAR
-    render_footer_bar()
 
 
 if __name__ == "__main__":

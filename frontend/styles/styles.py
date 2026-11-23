@@ -140,18 +140,20 @@ SVG_FOOTER_LOCK = """
 DASHBOARD_CSS = """
 <style id="pdf-inspector-theme">
 :root {
-  --bg-page: #F5F8FC;
+  --sidebar-navy: #142746;
+  --sidebar-navy-hover: #1E3660;
+  --bg-page: #F6F8FC;
   --bg-card: #FFFFFF;
-  --border-card: #E7EDF4;
-  --shadow-card: 0 2px 10px rgba(25, 45, 80, 0.04);
-  --primary: #1677F2;
-  --primary-hover: #1264D1;
-  --text-main: #14213D;
-  --text-sec: #70849F;
-  --success: #079B60;
-  --warning: #E97800;
-  --danger: #EB364C;
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --border-card: #DFE6F0;
+  --shadow-card: 0 2px 8px rgba(23, 35, 58, 0.04);
+  --primary: #0866E8;
+  --primary-hover: #0652BA;
+  --text-main: #17233A;
+  --text-sec: #667892;
+  --success: #15965D;
+  --warning: #E98914;
+  --danger: #E93D4D;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 /* Ẩn hoàn toàn phần tử chứa thẻ <style> để không tạo khoảng trống 16px đầu trang */
@@ -161,13 +163,14 @@ div[data-testid="stElementContainer"]:has(#pdf-inspector-theme) {
   padding: 0 !important;
 }
 
-/* Ẩn Streamlit Chrome mặc định (Header, Toolbar, Sidebar, Footer) */
+/* Ẩn Streamlit Chrome mặc định (Header, Toolbar, Footer) nhưng GIỮ LẠI stSidebar */
 header[data-testid="stHeader"],
 div[data-testid="stToolbar"],
 div[data-testid="stDecoration"],
 div[data-testid="stStatusWidget"],
-section[data-testid="stSidebar"],
 div[data-testid="collapsedControl"],
+button[data-testid="stSidebarCollapseButton"],
+div[data-testid="stSidebarHeader"],
 footer {
   display: none !important;
 }
@@ -178,34 +181,174 @@ html, body, .stApp {
   color: var(--text-main) !important;
 }
 
-/* Container chính: padding ngang 30px chuẩn desktop 1534x960 */
+/* Container chính: padding gọn gàng chuẩn desktop */
 .stMainBlockContainer,
 div[data-testid="stAppViewBlockContainer"],
 .block-container {
   max-width: 100% !important;
-  padding: 0 30px 12px 30px !important;
+  padding: 0 18px 12px 18px !important;
   margin: 0 !important;
 }
 
 /* Kiểm soát khoảng cách dọc mặc định của khối gốc */
 div[data-testid="stMainBlockContainer"] > div[data-testid="stVerticalBlock"] {
-  gap: 14px !important;
+  gap: 10px !important;
 }
 
 /* ============================================================================
-   1. HEADER BAR (Height ~76px, nền trắng tràn ngang 100% viewport)
+   0. LEFT SIDEBAR (Cố định bên trái, nền xanh navy đậm #142746, rộng ~212px)
+   ============================================================================ */
+section[data-testid="stSidebar"] {
+  background: var(--sidebar-navy) !important;
+  width: 212px !important;
+  min-width: 212px !important;
+  max-width: 212px !important;
+  border-right: 1px solid #0E1D36 !important;
+  box-shadow: 2px 0 10px rgba(10, 20, 40, 0.12) !important;
+  transition: margin-left 0.2s ease, width 0.2s ease !important;
+}
+
+section[data-testid="stSidebar"] > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stSidebarContent"],
+section[data-testid="stSidebar"] div[data-testid="stSidebarUserContent"] {
+  background: var(--sidebar-navy) !important;
+  padding: 14px 10px 12px 10px !important;
+}
+
+.sb-brand-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 6px 14px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+  margin-bottom: 10px;
+}
+
+.sb-brand-icon {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border-radius: 8px;
+  background: #0D66E8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(13, 102, 232, 0.35);
+}
+
+.sb-brand-title {
+  font-size: 13.8px;
+  font-weight: 700;
+  color: #FFFFFF;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.st-key-sb_nav_menu > div[data-testid="stVerticalBlock"] {
+  gap: 5px !important;
+}
+
+div[class*="st-key-sb_menu_act_"] button {
+  background: var(--primary) !important;
+  color: #FFFFFF !important;
+  border: 1px solid var(--primary) !important;
+  border-radius: 8px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 12px !important;
+  justify-content: flex-start !important;
+  box-shadow: 0 2px 6px rgba(8, 102, 232, 0.32) !important;
+}
+
+div[class*="st-key-sb_menu_act_"] button p,
+div[class*="st-key-sb_menu_act_"] button span[data-testid="stIconMaterial"] {
+  color: #FFFFFF !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+}
+
+div[class*="st-key-sb_menu_inact_"] button {
+  background: transparent !important;
+  color: #DCE6F5 !important;
+  border: 1px solid transparent !important;
+  border-radius: 8px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 12px !important;
+  justify-content: flex-start !important;
+  box-shadow: none !important;
+}
+
+div[class*="st-key-sb_menu_inact_"] button:hover {
+  background: var(--sidebar-navy-hover) !important;
+  color: #FFFFFF !important;
+}
+
+div[class*="st-key-sb_menu_inact_"] button p,
+div[class*="st-key-sb_menu_inact_"] button span[data-testid="stIconMaterial"] {
+  color: #DCE6F5 !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+}
+
+div[class*="st-key-sb_menu_dis_"] button,
+div[class*="st-key-sb_menu_dis_"] button:disabled {
+  background: transparent !important;
+  color: #CBD5E1 !important;
+  border: 1px solid transparent !important;
+  border-radius: 8px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 12px !important;
+  justify-content: flex-start !important;
+  opacity: 1 !important;
+  box-shadow: none !important;
+  cursor: default !important;
+}
+
+div[class*="st-key-sb_menu_dis_"] button p,
+div[class*="st-key-sb_menu_dis_"] button span[data-testid="stIconMaterial"] {
+  color: #CBD5E1 !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+}
+
+.sb-version-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 212px;
+  box-sizing: border-box;
+  padding: 14px 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--sidebar-navy);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #CBD5E1;
+  z-index: 20;
+}
+
+.sb-ver-txt {
+  color: #CBD5E1;
+  font-weight: 500;
+}
+
+/* ============================================================================
+   1. HEADER BAR (Height 60–64px, nền trắng, không có subtitle)
    ============================================================================ */
 .st-key-top_header_bar {
   max-width: none !important;
-  width: calc(100% + 60px) !important;
-  margin-left: -30px !important;
-  margin-right: -30px !important;
-  height: 75px !important;
-  min-height: 75px !important;
+  width: calc(100% + 36px) !important;
+  margin-left: -18px !important;
+  margin-right: -18px !important;
+  height: 62px !important;
+  min-height: 62px !important;
   background: #FFFFFF !important;
   border-bottom: 1px solid var(--border-card) !important;
-  box-shadow: 0 1px 6px rgba(20, 33, 61, 0.03) !important;
-  padding: 0 28px !important;
+  box-shadow: 0 1px 4px rgba(23, 35, 58, 0.03) !important;
+  padding: 0 20px !important;
   box-sizing: border-box !important;
   display: flex !important;
   align-items: center !important;
@@ -223,69 +366,133 @@ div[data-testid="stMainBlockContainer"] > div[data-testid="stVerticalBlock"] {
   width: 100% !important;
 }
 
-.hdr-brand-wrap {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.hdr-brand-text {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.hdr-title {
-  font-size: 23px !important;
-  font-weight: 700 !important;
-  color: var(--text-main) !important;
-  line-height: 1.2 !important;
-  letter-spacing: -0.015em !important;
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-.hdr-subtitle {
-  font-size: 15.5px !important;
-  font-weight: 400 !important;
-  color: var(--text-sec) !important;
-  line-height: 1.35 !important;
-  margin: 2px 0 0 0 !important;
-  padding: 0 !important;
-}
-
-/* Nút Tải PDF đã sửa ở góc phải Header (sát mép phải ~28px) */
-.st-key-hdr_download_wrap,
-.st-key-hdr_download_wrap > div[data-testid="stVerticalBlock"],
-.st-key-hdr_download_wrap div[data-testid="stElementContainer"],
-.st-key-hdr_download_btn,
-.st-key-hdr_download_disabled {
+.st-key-hdr_left_group {
   display: flex !important;
-  justify-content: flex-end !important;
   align-items: center !important;
-  width: 100% !important;
-}
-
-.st-key-hdr_download_btn > div,
-.st-key-hdr_download_disabled > div {
-  display: flex !important;
-  justify-content: flex-end !important;
+  justify-content: flex-start !important;
+  gap: 10px !important;
   width: auto !important;
 }
 
+.st-key-hdr_left_group > div[data-testid="stElementContainer"] {
+  width: auto !important;
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+}
+
+.st-key-hdr_menu_toggle_btn button {
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  min-height: 34px !important;
+  padding: 0 !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  border: none !important;
+  color: #334155 !important;
+  box-shadow: none !important;
+}
+
+.st-key-hdr_menu_toggle_btn button:hover {
+  background: #EAF2FD !important;
+  color: var(--primary) !important;
+}
+
+.hdr-title {
+  font-size: 19px !important;
+  font-weight: 700 !important;
+  color: var(--text-main) !important;
+  line-height: 1.2 !important;
+  letter-spacing: -0.01em !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  white-space: nowrap !important;
+}
+
+/* Nhóm nút bên phải Header: Xuất báo cáo | Xuất PDF đã sửa | Trợ giúp | User Avatar */
+.st-key-hdr_right_group {
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+}
+
+.st-key-hdr_right_group > div[data-testid="stElementContainer"] {
+  width: auto !important;
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+}
+
+.st-key-hdr_report_btn_wrap,
+.st-key-hdr_download_wrap,
+.st-key-hdr_help_btn_wrap {
+  width: auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+.hdr-user-avatar-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Nút Xuất báo cáo: nền trắng, viền xanh */
+.st-key-hdr_report_btn_wrap button {
+  background-color: #FFFFFF !important;
+  color: var(--primary) !important;
+  border: 1.5px solid #3B82F6 !important;
+  border-radius: 8px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 0 14px !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  box-shadow: none !important;
+}
+
+.st-key-hdr_report_btn_wrap button:hover:not(:disabled) {
+  background-color: #EFF6FF !important;
+}
+
+.st-key-hdr_report_btn_wrap button p,
+.st-key-hdr_report_btn_wrap button span[data-testid="stIconMaterial"] {
+  color: var(--primary) !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+}
+
+.st-key-hdr_report_btn_wrap button:disabled {
+  background-color: #FFFFFF !important;
+  border-color: #93C5FD !important;
+  color: var(--primary) !important;
+  opacity: 0.78 !important;
+}
+
+.st-key-hdr_report_btn_wrap button:disabled p,
+.st-key-hdr_report_btn_wrap button:disabled span[data-testid="stIconMaterial"] {
+  color: var(--primary) !important;
+}
+
+/* Nút Xuất PDF đã sửa: Primary Blue */
 .st-key-hdr_download_btn button,
 .st-key-hdr_download_disabled button {
   background-color: var(--primary) !important;
   color: #FFFFFF !important;
-  border: 1px solid var(--primary) !important;
+  border: 1.5px solid var(--primary) !important;
   border-radius: 8px !important;
-  height: 48px !important;
-  min-height: 48px !important;
-  padding: 0 24px !important;
-  font-size: 15.5px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 0 15px !important;
+  font-size: 13.5px !important;
   font-weight: 600 !important;
-  box-shadow: 0 2px 8px rgba(22, 119, 242, 0.22) !important;
-  transition: background-color 0.15s ease, transform 0.1s ease !important;
+  box-shadow: 0 2px 6px rgba(8, 102, 232, 0.20) !important;
   white-space: nowrap !important;
 }
 
@@ -296,14 +503,14 @@ div[data-testid="stMainBlockContainer"] > div[data-testid="stVerticalBlock"] {
 }
 
 .st-key-hdr_download_disabled button {
-  opacity: 0.58 !important;
+  opacity: 0.82 !important;
   box-shadow: none !important;
   cursor: not-allowed !important;
 }
 
 .st-key-hdr_download_btn button p,
 .st-key-hdr_download_disabled button p {
-  font-size: 15px !important;
+  font-size: 13.5px !important;
   font-weight: 600 !important;
   color: #FFFFFF !important;
 }
@@ -311,68 +518,25 @@ div[data-testid="stMainBlockContainer"] > div[data-testid="stVerticalBlock"] {
 .st-key-hdr_download_btn button span[data-testid="stIconMaterial"],
 .st-key-hdr_download_disabled button span[data-testid="stIconMaterial"] {
   color: #FFFFFF !important;
-  font-size: 20px !important;
+  font-size: 18px !important;
 }
 
-/* Bộ chuyển 2 chế độ làm việc độc lập trên Header (Tab 1 & Tab 2) */
-.st-key-hdr_mode_switcher {
-  background: #F1F5FA !important;
-  border: 1px solid #E1E9F4 !important;
-  border-radius: 10px !important;
-  padding: 4px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 4px !important;
-  width: auto !important;
-  margin: 0 auto !important;
-}
-
-div[data-testid="stElementContainer"]:has(.st-key-hdr_mode_switcher) {
-  display: flex !important;
-  justify-content: center !important;
-  align-items: center !important;
-}
-
-div[class*="st-key-mode_tab_act_"] button {
-  background: #FFFFFF !important;
-  color: var(--primary) !important;
-  border: 1px solid #D5E4FA !important;
-  border-radius: 7px !important;
-  height: 36px !important;
-  min-height: 36px !important;
-  padding: 0 14px !important;
-  box-shadow: 0 1px 4px rgba(22, 119, 242, 0.12) !important;
-  white-space: nowrap !important;
-}
-
-div[class*="st-key-mode_tab_act_"] button p {
-  font-size: 13.5px !important;
-  font-weight: 700 !important;
-  color: var(--primary) !important;
-}
-
-div[class*="st-key-mode_tab_inact_"] button {
+.st-key-hdr_help_btn_wrap button {
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  min-height: 34px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
   background: transparent !important;
-  color: #5B708B !important;
-  border: 1px solid transparent !important;
-  border-radius: 7px !important;
-  height: 36px !important;
-  min-height: 36px !important;
-  padding: 0 14px !important;
+  border: none !important;
+  color: #475569 !important;
   box-shadow: none !important;
-  white-space: nowrap !important;
 }
 
-div[class*="st-key-mode_tab_inact_"] button:hover {
-  background: #E8F0FB !important;
-  color: var(--text-main) !important;
-}
-
-div[class*="st-key-mode_tab_inact_"] button p {
-  font-size: 13.5px !important;
-  font-weight: 600 !important;
-  color: inherit !important;
+.st-key-hdr_help_btn_wrap button:hover {
+  background: #EAF2FD !important;
+  color: var(--primary) !important;
 }
 
 /* ============================================================================
@@ -500,28 +664,15 @@ div[class*="st-key-sec_exp_"] button p {
 }
 
 /* ============================================================================
-   2. PDF UPLOAD & PROGRESS CARD (Height ~134px, chia 33% / 67%)
+   2. UPLOAD AREA — GIỮ ĐÚNG MẪU (Height 168px, nền xanh nhạt, viền nét đứt)
    ============================================================================ */
-.st-key-upload_card {
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border-card) !important;
-  border-radius: 12px !important;
-  box-shadow: var(--shadow-card) !important;
-  padding: 12px 18px !important;
-}
-
-.st-key-upload_card > div[data-testid="stHorizontalBlock"] {
-  align-items: center !important;
-  gap: 22px !important;
-}
-
-/* Khung Upload nét đứt bên trái (33%) */
 .st-key-upload_zone_box {
   position: relative !important;
-  height: 104px !important;
-  min-height: 104px !important;
-  max-height: 104px !important;
-  border-radius: 8px !important;
+  height: 168px !important;
+  min-height: 168px !important;
+  max-height: 168px !important;
+  width: 100% !important;
+  border-radius: 11px !important;
   overflow: hidden !important;
   gap: 0 !important;
 }
@@ -531,16 +682,16 @@ div[class*="st-key-sec_exp_"] button p {
 }
 
 .upload-visual-overlay {
-  height: 104px;
+  height: 168px;
   width: 100%;
-  border: 1.5px dashed #9AC2F4;
-  border-radius: 8px;
-  background: #EFF6FE;
+  border: 1.5px dashed #7BAEF7;
+  border-radius: 11px;
+  background: #EEF5FF;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 14px;
-  padding: 0 18px;
+  justify-content: space-around;
+  gap: 20px;
+  padding: 0 48px;
   box-sizing: border-box;
   pointer-events: none;
   transition: background-color 0.15s ease, border-color 0.15s ease;
@@ -551,27 +702,93 @@ div[class*="st-key-sec_exp_"] button p {
   border-color: var(--primary);
 }
 
+.upload-illust-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.upload-center-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 7px;
+  flex: 1;
+}
+
+.upload-cloud-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: -2px;
+}
+
+.upload-cloud-wrap svg {
+  width: 38px;
+  height: 38px;
+}
+
 .upload-visual-title {
-  font-size: 15.5px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--text-main);
   line-height: 1.3;
   margin: 0;
 }
 
-.upload-visual-sub {
+.upload-dual-opts {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.upload-opt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   font-size: 13.5px;
-  font-weight: 400;
-  color: var(--text-sec);
-  line-height: 1.35;
-  margin: 2px 0 0 0;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 7px 16px;
+  height: 36px;
+  box-sizing: border-box;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  white-space: nowrap;
+}
+
+.upload-opt-file {
+  background: var(--primary);
+  color: #FFFFFF;
+  border: 1.5px solid var(--primary);
+  box-shadow: 0 2px 6px rgba(8, 102, 232, 0.22);
+}
+
+.upload-opt-dir {
+  background: #FFFFFF;
+  color: var(--primary);
+  border: 1.5px solid #3B82F6;
+}
+
+.st-key-upload_zone_box:has(.st-key-upl_half_file:hover) .upload-opt-file {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+.st-key-upload_zone_box:has(.st-key-upl_half_dir:hover) .upload-opt-dir {
+  background: #EAF2FF;
 }
 
 /* Đặt st.file_uploader thật phủ trong suốt khớp 100% lên vùng nét đứt */
 .st-key-upload_zone_box div[data-testid="stElementContainer"]:has(div[data-testid="stFileUploader"]) {
   position: absolute !important;
   inset: 0 !important;
-  height: 104px !important;
+  height: 168px !important;
   width: 100% !important;
   z-index: 10 !important;
   margin: 0 !important;
@@ -581,7 +798,7 @@ div[class*="st-key-sec_exp_"] button p {
 .st-key-upload_zone_box div[data-testid="stFileUploader"] {
   position: absolute !important;
   inset: 0 !important;
-  height: 104px !important;
+  height: 168px !important;
   width: 100% !important;
   z-index: 10 !important;
   opacity: 0 !important;
@@ -590,8 +807,8 @@ div[class*="st-key-sec_exp_"] button p {
 }
 
 .st-key-upload_zone_box section[data-testid="stFileUploaderDropzone"] {
-  height: 104px !important;
-  min-height: 104px !important;
+  height: 168px !important;
+  min-height: 168px !important;
   width: 100% !important;
   padding: 0 !important;
   margin: 0 !important;
@@ -611,60 +828,11 @@ div[class*="st-key-sec_exp_"] button p {
   display: none !important;
 }
 
-/* Hai lựa chọn trong cùng khung 104px: nửa trái "Chọn file PDF" | nửa phải "Chọn thư mục" */
-.upload-visual-dual {
-  flex-direction: column;
-  gap: 9px;
-  padding: 8px 12px;
-}
-
-.upload-dual-top {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.upload-visual-dual svg {
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-}
-
-.upload-visual-dual .upload-visual-title {
-  font-size: 14.5px;
-}
-
-.upload-dual-opts {
-  display: flex;
-  width: 100%;
-  gap: 8px;
-}
-
-.upload-opt {
-  flex: 1;
-  text-align: center;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--primary);
-  background: #FFFFFF;
-  border: 1px solid #C9DDF7;
-  border-radius: 6px;
-  padding: 4px 0;
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-
-.st-key-upload_zone_box:has(.st-key-upl_half_file:hover) .upload-opt-file,
-.st-key-upload_zone_box:has(.st-key-upl_half_dir:hover) .upload-opt-dir {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: #FFFFFF;
-}
-
 .st-key-upload_zone_box .st-key-upl_half_file,
 .st-key-upload_zone_box .st-key-upl_half_dir {
   position: absolute !important;
   top: 0 !important;
-  height: 104px !important;
+  height: 168px !important;
   width: 50% !important;
   z-index: 10 !important;
   gap: 0 !important;
@@ -679,10 +847,26 @@ div[class*="st-key-sec_exp_"] button p {
   left: 50% !important;
 }
 
-/* Khung bao ngoài do Streamlit sinh ra không được chặn click của nửa còn lại */
 .st-key-upload_zone_box div:has(> .st-key-upl_half_file),
 .st-key-upload_zone_box div:has(> .st-key-upl_half_dir) {
   pointer-events: none !important;
+}
+
+/* ============================================================================
+   3. THANH THÔNG TIN FILE (1 hàng ngang duy nhất, cao 65–75px)
+   ============================================================================ */
+.st-key-upload_card {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-card) !important;
+  border-radius: 10px !important;
+  box-shadow: var(--shadow-card) !important;
+  padding: 8px 16px !important;
+  min-height: 66px !important;
+}
+
+.st-key-upload_card > div[data-testid="stHorizontalBlock"] {
+  align-items: center !important;
+  gap: 16px !important;
 }
 
 /* Bộ lọc 'Tệp PDF' phía trên bảng kết quả (chỉ hiện khi quét nhiều PDF) */
@@ -711,91 +895,112 @@ div[class*="st-key-sec_exp_"] button p {
   color: var(--text-main) !important;
 }
 
-/* Cột 'Tệp PDF': đường dẫn dài được rút gọn, rê chuột để xem đầy đủ */
 .tbl-file-cell {
-  font-size: 12.8px;
+  font-size: 12.5px;
   color: var(--text-main);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* Khu vực File Processing bên phải (67%) */
-.st-key-file_proc_col {
-  gap: 8px !important;
-}
-
 .file-meta-row {
   display: flex;
   align-items: center;
-  gap: 13px;
+  gap: 11px;
+  min-width: 0;
+  border-right: 1px solid #E2E8F0;
+  padding-right: 16px;
 }
 
 .file-name-txt {
-  font-size: 16px;
+  font-size: 14.5px;
   font-weight: 700;
   color: var(--text-main);
-  line-height: 1.28;
+  line-height: 1.25;
   margin: 0;
-  word-break: break-all;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .file-sub-txt {
-  font-size: 13.8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
   font-weight: 400;
+  color: #526580;
+  line-height: 1.3;
+  margin: 3px 0 0 0;
+  white-space: nowrap;
+}
+
+.file-sub-sep {
+  display: inline-block;
+  width: 12px;
+}
+
+/* Thanh tiến trình 1 hàng ngang ở giữa thanh thông tin file */
+.proc-single-line-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 0 6px;
+  box-sizing: border-box;
+}
+
+.proc-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12.8px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.proc-badge-pill.done {
+  background: #E6F7EE;
+  color: #15965D;
+}
+
+.proc-badge-pill.scanning {
+  background: #EBF3FE;
+  color: var(--primary);
+}
+
+.proc-badge-pill.idle {
+  background: #F1F5F9;
   color: var(--text-sec);
-  line-height: 1.35;
-  margin: 2px 0 0 0;
 }
 
-/* Nút X tròn xóa file căn sát mép phải */
-div[data-testid="stElementContainer"]:has(.st-key-btn_clear_file),
-.st-key-btn_clear_file {
-  display: flex !important;
-  justify-content: flex-end !important;
-  width: 100% !important;
-}
-
-.st-key-btn_clear_file button {
-  width: 30px !important;
-  height: 30px !important;
-  min-width: 30px !important;
-  min-height: 30px !important;
-  border-radius: 50% !important;
-  padding: 0 !important;
-  background: #F1F5FA !important;
-  border: 1px solid #E4ECF5 !important;
-  color: #70849F !important;
-  box-shadow: none !important;
-}
-
-.st-key-btn_clear_file button:hover {
-  background: #FEE2E2 !important;
-  border-color: #FCA5A5 !important;
-  color: var(--danger) !important;
-}
-
-.st-key-btn_clear_file button p,
-.st-key-btn_clear_file button span {
-  font-size: 15px !important;
-  line-height: 1 !important;
-}
-
-/* Thanh tiến trình (Progress Bar 9px + % bên phải + Trạng thái bên dưới) */
 .proc-progress-wrap {
-  margin-top: 2px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+}
+
+.proc-status-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .proc-bar-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .proc-bar-track {
   flex: 1;
-  height: 9px;
-  background: #E5EEF9;
+  height: 8px;
+  background: #E2E8F0;
   border-radius: 999px;
   overflow: hidden;
 }
@@ -807,21 +1012,26 @@ div[data-testid="stElementContainer"]:has(.st-key-btn_clear_file),
   transition: width 0.2s ease;
 }
 
+.proc-bar-fill.done {
+  background: #16A34A;
+}
+
 .proc-pct-txt {
-  font-size: 13.5px;
-  font-weight: 500;
-  color: var(--text-sec);
-  min-width: 38px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+  min-width: 36px;
   text-align: right;
+  flex-shrink: 0;
 }
 
 .proc-status-row {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 7px;
-  margin-top: 8px;
-  font-size: 14px;
-  font-weight: 500;
+  gap: 6px;
+  margin: 0;
+  font-size: 12.8px;
+  font-weight: 600;
   color: var(--success);
 }
 
@@ -833,70 +1043,54 @@ div[data-testid="stElementContainer"]:has(.st-key-btn_clear_file),
   color: var(--text-sec);
 }
 
-/* ============================================================================
-   3. SUMMARY STATISTICS — 4 CARDS (Height ~100px, gap 16px)
-   ============================================================================ */
-.summary-cards-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-  width: 100%;
-  margin-bottom: 15px !important;
+/* 3 icon hành động bên phải Thanh thông tin file: Folder | Info | Trash */
+.st-key-file_bar_actions_row {
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  gap: 6px !important;
+  width: 100% !important;
 }
 
-.summary-stat-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-card);
-  border-radius: 11px;
-  box-shadow: var(--shadow-card);
-  height: 97px;
-  padding: 0 22px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  box-sizing: border-box;
+.st-key-file_bar_actions_row > div[data-testid="stElementContainer"] {
+  width: auto !important;
+  flex: 0 0 auto !important;
+  margin: 0 !important;
 }
 
-.summary-icon-box {
-  width: 50px;
-  height: 50px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+.st-key-btn_view_file_info button,
+.st-key-btn_doc_tech_info button,
+.st-key-btn_clear_file button {
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  min-height: 34px !important;
+  border-radius: 8px !important;
+  padding: 0 !important;
+  background: #F4F7FB !important;
+  border: 1px solid var(--border-card) !important;
+  color: #526580 !important;
+  box-shadow: none !important;
 }
 
-.summary-icon-box.blue { background: #EAF3FF; }
-.summary-icon-box.red { background: #FDECEE; }
-.summary-icon-box.green { background: #E7F8EF; }
-.summary-icon-box.orange { background: #FFF3E3; }
-
-.summary-stat-label {
-  font-size: 14.5px;
-  font-weight: 500;
-  color: #5E738F;
-  line-height: 1.25;
-  margin-bottom: 4px;
+.st-key-btn_view_file_info button:hover:not(:disabled),
+.st-key-btn_doc_tech_info button:hover:not(:disabled) {
+  background: #EAF2FD !important;
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
 }
 
-.summary-stat-val {
-  font-size: 29px;
-  font-weight: 800;
-  line-height: 1.05;
-  letter-spacing: -0.02em;
+.st-key-btn_clear_file button:hover:not(:disabled) {
+  background: #FEE2E2 !important;
+  border-color: #FCA5A5 !important;
+  color: var(--danger) !important;
 }
-
-.summary-stat-val.navy { color: var(--text-main); }
-.summary-stat-val.red { color: var(--danger); }
-.summary-stat-val.green { color: var(--success); }
-.summary-stat-val.orange { color: var(--warning); }
 
 /* ============================================================================
-   4. MAIN TWO-COLUMN AREA (61.5% Error Table | 38.5% Document Preview)
+   4. MAIN WORKSPACE — CHIA HAI PANEL (51% Bảng kết quả | 49% PDF Preview)
    ============================================================================ */
 .st-key-main_two_col_row > div[data-testid="stHorizontalBlock"] {
-  gap: 14px !important;
+  gap: 12px !important;
   align-items: stretch !important;
 }
 
@@ -904,20 +1098,20 @@ div[data-testid="stElementContainer"]:has(.st-key-btn_clear_file),
 .st-key-right_preview_card {
   background: var(--bg-card) !important;
   border: 1px solid var(--border-card) !important;
-  border-radius: 12px !important;
+  border-radius: 11px !important;
   box-shadow: var(--shadow-card) !important;
-  padding: 16px 20px !important;
-  min-height: 492px !important;
+  padding: 14px 16px !important;
+  min-height: 515px !important;
   height: 100% !important;
 }
 
 .st-key-left_error_card > div[data-testid="stVerticalBlock"],
 .st-key-right_preview_card > div[data-testid="stVerticalBlock"] {
-  gap: 10px !important;
+  gap: 8px !important;
 }
 
 .panel-heading {
-  font-size: 20px !important;
+  font-size: 17px !important;
   font-weight: 700 !important;
   color: var(--text-main) !important;
   line-height: 1.25 !important;
@@ -927,28 +1121,77 @@ div[data-testid="stElementContainer"]:has(.st-key-btn_clear_file),
   white-space: nowrap !important;
 }
 
-/* Hàng Filter Pills (Tất cả / Sọc / Lẫn trang / Xoay) */
+.st-key-left_hdr_row > div[data-testid="stHorizontalBlock"] {
+  align-items: center !important;
+}
+
+.st-key-left_panel_hdr_icons,
+.st-key-left_hdr_icons {
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  gap: 4px !important;
+  width: 100% !important;
+}
+
+.st-key-left_panel_hdr_icons > div[data-testid="stElementContainer"],
+.st-key-left_hdr_icons > div[data-testid="stElementContainer"] {
+  width: auto !important;
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+}
+
+.st-key-left_panel_hdr_icons button,
+.st-key-left_hdr_icons button {
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
+  min-height: 30px !important;
+  padding: 0 !important;
+  border-radius: 7px !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  color: #475569 !important;
+  box-shadow: none !important;
+}
+
+.st-key-left_panel_hdr_icons button:hover:not(:disabled),
+.st-key-left_hdr_icons button:hover:not(:disabled) {
+  border-color: var(--border-card) !important;
+  color: var(--primary) !important;
+  background: #EAF2FD !important;
+}
+
+/* Hàng Filter Pills (Tất cả / Sọc / Lẫn trang / Xoay / Cần rà soát) */
 .st-key-filter_pills_bar {
-  gap: 9px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
   flex-wrap: wrap !important;
+}
+
+.st-key-filter_pills_bar > div[data-testid="stElementContainer"] {
+  width: auto !important;
+  flex: 0 0 auto !important;
+  margin: 0 !important;
 }
 
 div[class*="st-key-flt_act_"] button {
   background: var(--primary) !important;
   color: #FFFFFF !important;
   border: 1px solid var(--primary) !important;
-  border-radius: 13px !important;
-  height: 36px !important;
-  min-height: 36px !important;
-  padding: 0 16px !important;
-  font-size: 13.5px !important;
+  border-radius: 999px !important;
+  height: 31px !important;
+  min-height: 31px !important;
+  padding: 0 12px !important;
+  font-size: 12.5px !important;
   font-weight: 600 !important;
-  box-shadow: 0 2px 6px rgba(22, 119, 242, 0.18) !important;
+  box-shadow: 0 1px 4px rgba(8, 102, 232, 0.18) !important;
 }
 
 div[class*="st-key-flt_act_"] button p {
   color: #FFFFFF !important;
-  font-size: 13.5px !important;
+  font-size: 12.5px !important;
   font-weight: 600 !important;
 }
 
@@ -956,11 +1199,11 @@ div[class*="st-key-flt_inact_"] button {
   background: #F4F7FB !important;
   color: #5A6E87 !important;
   border: 1px solid #E5ECF5 !important;
-  border-radius: 13px !important;
-  height: 36px !important;
-  min-height: 36px !important;
-  padding: 0 16px !important;
-  font-size: 13.5px !important;
+  border-radius: 999px !important;
+  height: 31px !important;
+  min-height: 31px !important;
+  padding: 0 12px !important;
+  font-size: 12.5px !important;
   font-weight: 500 !important;
   box-shadow: none !important;
 }
@@ -973,11 +1216,11 @@ div[class*="st-key-flt_inact_"] button:hover {
 
 div[class*="st-key-flt_inact_"] button p {
   color: inherit !important;
-  font-size: 13.5px !important;
+  font-size: 12.5px !important;
   font-weight: 500 !important;
 }
 
-/* Bảng kết quả 6 cột */
+/* Bảng kết quả 7 cột: | Chọn | Trang | Sọc | Lẫn | Xoay | Trạng thái | Thao tác | */
 .st-key-error_table_wrapper {
   border: 1px solid #E6EEF6 !important;
   border-radius: 8px !important;
@@ -990,16 +1233,16 @@ div[class*="st-key-flt_inact_"] button p {
 }
 
 .st-key-tbl_hdr_row {
-  background: #EFF4FA !important;
+  background: #F8FAFC !important;
   border-bottom: 1px solid #E4ECF5 !important;
-  min-height: 42px !important;
+  min-height: 38px !important;
   padding: 0 !important;
 }
 
 div[class*="st-key-tbl_row_norm_"] {
   background: #FFFFFF !important;
   border-bottom: 1px solid #EDF2F8 !important;
-  min-height: 55px !important;
+  min-height: 46px !important;
   padding: 0 !important;
   transition: background-color 0.12s ease;
 }
@@ -1011,7 +1254,7 @@ div[class*="st-key-tbl_row_norm_"]:hover {
 div[class*="st-key-tbl_row_sel_"] {
   background: #E7F1FD !important;
   border-bottom: 1px solid #D8E7FA !important;
-  min-height: 55px !important;
+  min-height: 46px !important;
   padding: 0 !important;
 }
 
@@ -1020,53 +1263,74 @@ div[class*="st-key-tbl_row_sel_"]:last-child {
   border-bottom: none !important;
 }
 
-/* Đường kẻ dọc mảnh phân cách giữa các cột trong bảng */
 .st-key-error_table_wrapper div[data-testid="stHorizontalBlock"] {
   gap: 0 !important;
   align-items: center !important;
 }
 
 .st-key-error_table_wrapper div[data-testid="stColumn"]:not(:last-child) {
-  border-right: 1px solid #EEF3F9 !important;
+  border-right: none !important;
 }
 
 .tbl-hdr-cell {
-  height: 42px;
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13.5px;
+  font-size: 12.5px;
   font-weight: 600;
-  color: #536780;
+  color: #475569;
   text-align: center;
-  padding: 0 6px;
+  padding: 0 4px;
 }
 
 .tbl-data-cell {
-  height: 55px;
+  height: 46px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-main);
   text-align: center;
-  padding: 0 6px;
+  padding: 0 4px;
+}
+
+.st-key-tbl_hdr_chk_cell {
+  height: 38px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+div[class*="st-key-tbl_chk_cell_"] {
+  height: 46px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.st-key-tbl_hdr_chk_cell div[data-testid="stCheckbox"],
+div[class*="st-key-tbl_chk_cell_"] div[data-testid="stCheckbox"] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
 }
 
 .tbl-page-num {
-  font-size: 14.5px;
+  font-size: 13.5px;
   font-weight: 700;
   color: var(--text-main);
 }
 
 .tbl-rot-txt {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-main);
 }
 
 .tbl-dash {
-  font-size: 15px;
+  font-size: 14px;
   color: #9AAABB;
   font-weight: 400;
 }
@@ -1083,9 +1347,10 @@ div[class*="st-key-tbl_row_sel_"]:last-child {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 4px 13px;
+  gap: 5px;
+  padding: 3px 10px;
   border-radius: 999px;
-  font-size: 12.8px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1.3;
   white-space: nowrap;
@@ -1093,12 +1358,17 @@ div[class*="st-key-tbl_row_sel_"]:last-child {
 
 .status-pill.green {
   background: #E2F6EC;
-  color: #079B60;
+  color: var(--success);
 }
 
 .status-pill.orange {
   background: #FFF0D9;
-  color: #D97200;
+  color: #D97706;
+}
+
+.status-pill.red {
+  background: #FDECEE;
+  color: var(--danger);
 }
 
 .status-pill.gray {
@@ -1106,60 +1376,49 @@ div[class*="st-key-tbl_row_sel_"]:last-child {
   color: #60738A;
 }
 
-/* Nút Xem trong cột cuối của bảng (căn giữa dọc tuyệt đối) */
-div[class*="st-key-tbl_action_cell_"],
-div[class*="st-key-tbl_action_cell_"] > div[data-testid="stVerticalBlock"] {
-  height: 55px !important;
+/* Cột Thao tác: icon Xem (mắt) + icon Chỉnh sửa (bút chì) */
+div[class*="st-key-tbl_action_cell_"] {
+  height: 46px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: 0 !important;
+  gap: 4px !important;
 }
 
-div[class*="st-key-tbl_action_cell_"] div[data-testid="stElementContainer"] {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+div[class*="st-key-tbl_action_cell_"] > div[data-testid="stElementContainer"] {
   width: auto !important;
+  flex: 0 0 auto !important;
   margin: 0 !important;
 }
 
-div[class*="st-key-btn_view_p_"] {
-  display: flex !important;
-  justify-content: center !important;
-  align-items: center !important;
-  margin: 0 !important;
-}
-
-div[class*="st-key-btn_view_p_"] button {
-  background: #FFFFFF !important;
-  border: 1px solid #D7E2EE !important;
-  border-radius: 7px !important;
-  height: 32px !important;
-  min-height: 32px !important;
-  padding: 0 11px !important;
-  color: var(--text-main) !important;
-  box-shadow: 0 1px 2px rgba(20, 33, 61, 0.03) !important;
-}
-
-div[class*="st-key-btn_view_p_"] button:hover {
-  border-color: var(--primary) !important;
+div[class*="st-key-btn_view_p_"] button,
+div[class*="st-key-btn_edit_p_"] button {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: 6px !important;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
+  padding: 0 !important;
   color: var(--primary) !important;
-  background: #F4F9FF !important;
+  box-shadow: none !important;
 }
 
-div[class*="st-key-btn_view_p_"] button p {
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  color: inherit !important;
+div[class*="st-key-btn_view_p_"] button:hover,
+div[class*="st-key-btn_edit_p_"] button:hover {
+  border-color: #BFDBFE !important;
+  color: var(--primary) !important;
+  background: #EFF6FF !important;
 }
 
-div[class*="st-key-btn_view_p_"] button span[data-testid="stIconMaterial"] {
+div[class*="st-key-btn_view_p_"] button span[data-testid="stIconMaterial"],
+div[class*="st-key-btn_edit_p_"] button span[data-testid="stIconMaterial"] {
   color: var(--primary) !important;
   font-size: 17px !important;
 }
 
-/* Pagination gọn cuối bảng khi > 5 dòng */
+/* Pagination gọn cuối bảng */
 .st-key-tbl_pagination_bar {
   padding-top: 4px !important;
   align-items: center !important;
@@ -1170,14 +1429,14 @@ div[class*="st-key-pg_nav_"] button {
   min-height: 28px !important;
   padding: 0 10px !important;
   border-radius: 6px !important;
-  font-size: 12.5px !important;
+  font-size: 12px !important;
   background: #F5F8FC !important;
   border: 1px solid #E2EAF3 !important;
   color: var(--text-main) !important;
 }
 
 .tbl-empty-state {
-  min-height: 280px;
+  min-height: 320px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1188,20 +1447,20 @@ div[class*="st-key-pg_nav_"] button {
 }
 
 .tbl-empty-title {
-  font-size: 15.5px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text-main);
   margin: 10px 0 4px 0;
 }
 
 .tbl-empty-sub {
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--text-sec);
   max-width: 380px;
 }
 
 /* ============================================================================
-   5. RIGHT PANEL — PDF PREVIEW, DETAIL BOX & ACTION BUTTONS
+   5. RIGHT PANEL — XEM TRANG [SỐ TRANG], TOOLBAR, CANVAS & THÔNG TIN TRANG
    ============================================================================ */
 .st-key-preview_hdr_row > div[data-testid="stHorizontalBlock"] {
   align-items: center !important;
@@ -1211,23 +1470,29 @@ div[data-testid="stElementContainer"]:has(.st-key-preview_tabs_group),
 .st-key-preview_tabs_group {
   display: flex !important;
   gap: 6px !important;
-  justify-content: flex-end !important;
+  justify-content: flex-start !important;
   width: 100% !important;
+}
+
+.st-key-preview_tabs_group > div[data-testid="stElementContainer"] {
+  width: auto !important;
+  flex: 1 1 0 !important;
+  margin: 0 !important;
 }
 
 div[class*="st-key-ptab_act_"] button {
   background: #EDF5FF !important;
   color: var(--primary) !important;
   border: 1.5px solid var(--primary) !important;
-  border-radius: 8px !important;
-  height: 33px !important;
-  min-height: 33px !important;
-  padding: 0 13px !important;
+  border-radius: 7px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 0 10px !important;
   box-shadow: none !important;
 }
 
 div[class*="st-key-ptab_act_"] button p {
-  font-size: 13px !important;
+  font-size: 12px !important;
   font-weight: 600 !important;
   color: var(--primary) !important;
 }
@@ -1236,32 +1501,84 @@ div[class*="st-key-ptab_inact_"] button {
   background: #F4F7FB !important;
   color: var(--text-sec) !important;
   border: 1px solid #E6ECF5 !important;
-  border-radius: 8px !important;
-  height: 33px !important;
-  min-height: 33px !important;
-  padding: 0 13px !important;
+  border-radius: 7px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 0 10px !important;
   box-shadow: none !important;
 }
 
 div[class*="st-key-ptab_inact_"] button p {
-  font-size: 13px !important;
+  font-size: 12px !important;
   font-weight: 500 !important;
   color: var(--text-sec) !important;
 }
 
-/* Vùng xem trước ảnh PDF (Cao chuẩn ~214-220px như ảnh mẫu) */
+/* Toolbar điều khiển Preview cùng hàng với tiêu đề Xem trang */
+.st-key-preview_toolbar_bar {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 3px !important;
+  width: 100% !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+.st-key-preview_toolbar_bar > div[data-testid="stElementContainer"] {
+  width: auto !important;
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+}
+
+.st-key-preview_toolbar_bar button {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
+  padding: 0 !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  color: #334155 !important;
+  font-size: 12px !important;
+  box-shadow: none !important;
+}
+
+.st-key-preview_toolbar_bar button:hover:not(:disabled) {
+  border-color: var(--border-card) !important;
+  color: var(--primary) !important;
+  background: #EFF6FF !important;
+}
+
+.ptb-page-counter {
+  height: 28px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+}
+
+/* Vùng xem trước ảnh PDF bên trái của Panel phải */
 .doc-preview-stage {
   width: 100%;
-  height: 214px;
-  background: #ECEFF5;
-  border: 1px solid #E3E9F2;
-  border-radius: 9px;
+  height: 420px;
+  background: #D8DCE3;
+  border: 1px solid #CFD6DF;
+  border-radius: 8px;
   position: relative;
-  overflow: hidden;
+  overflow: auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 14px;
+  padding: 12px;
   box-sizing: border-box;
 }
 
@@ -1271,69 +1588,68 @@ div[class*="st-key-ptab_inact_"] button p {
   align-items: center;
   justify-content: center;
   background: #FFFFFF;
-  border-radius: 3px;
-  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.10);
+  border-radius: 2px;
+  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.16);
   overflow: hidden;
-  max-height: 194px;
-  max-width: 82%;
+  max-height: 394px;
+  max-width: 96%;
 }
 
 .doc-sheet-frame.boundary-focus {
-  max-width: 60%;
-  max-height: 198px;
+  max-width: 92%;
+  max-height: 394px;
 }
 
 .doc-sheet-frame img {
   display: block;
-  max-height: 194px;
+  max-height: 394px;
   width: auto;
   max-width: 100%;
   object-fit: contain;
 }
 
 .doc-sheet-frame.boundary-focus img {
-  max-height: 198px;
+  max-height: 394px;
   width: 100%;
   height: auto;
 }
 
-/* Overlay vùng lỗi theo tọa độ thực tế */
+/* Overlay vùng lỗi theo tọa độ thực tế (viền vàng/hổ phách như ảnh mẫu) */
 .defect-bbox-overlay {
   position: absolute;
-  background: rgba(235, 54, 76, 0.13);
-  border: 2px dashed #EB364C;
-  border-radius: 5px;
+  background: rgba(254, 240, 138, 0.28);
+  border: 2px solid #F59E0B;
+  border-radius: 3px;
   box-sizing: border-box;
   pointer-events: none;
 }
 
 .defect-bbox-overlay.suspected {
-  background: rgba(233, 120, 0, 0.13);
-  border: 2px dashed #E97800;
+  background: rgba(254, 240, 138, 0.30);
+  border: 2px solid #F59E0B;
 }
 
 .defect-bbox-overlay.proposed-ok {
-  background: rgba(7, 155, 96, 0.08);
-  border: 1.8px dashed #079B60;
+  background: rgba(21, 150, 93, 0.08);
+  border: 1.8px dashed var(--success);
 }
 
-/* Nhãn pill nổi bên phải vùng lỗi (VD: ● Lẫn đầu/cuối trang) */
+/* Nhãn pill nổi trên vùng lỗi */
 .preview-floating-pill {
   position: absolute;
-  right: 12px;
-  top: 44%;
-  transform: translateY(-50%);
+  right: 8px;
+  top: 12px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
+  gap: 5px;
+  padding: 4px 10px;
   border-radius: 999px;
   background: #FFF1F3;
   border: 1px solid #FBC4CC;
   color: #D92D43;
-  font-size: 12.5px;
+  font-size: 11.5px;
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(235, 54, 76, 0.12);
+  box-shadow: 0 2px 6px rgba(235, 54, 76, 0.12);
   z-index: 4;
   white-space: nowrap;
 }
@@ -1347,12 +1663,12 @@ div[class*="st-key-ptab_inact_"] button p {
 .preview-floating-pill.green {
   background: #EBFAF2;
   border-color: #B4E8CD;
-  color: #079B60;
+  color: var(--success);
 }
 
 .preview-pill-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: currentColor;
   flex-shrink: 0;
@@ -1362,8 +1678,8 @@ div[class*="st-key-ptab_inact_"] button p {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  height: 192px;
+  gap: 8px;
+  height: 380px;
   width: 100%;
 }
 
@@ -1372,40 +1688,51 @@ div[class*="st-key-ptab_inact_"] button p {
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.10);
   padding: 3px;
-  max-height: 188px;
+  max-height: 368px;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
 .split-preview-card img {
-  max-height: 164px;
+  max-height: 336px;
   width: auto;
   object-fit: contain;
 }
 
 .split-preview-cap {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 600;
   color: var(--text-sec);
   margin-top: 2px;
 }
 
-/* Error Detail Box (4 hàng chuẩn xác) */
+/* Cột Thông tin trang bên phải của Panel Preview */
 .error-detail-card {
-  border: 1px solid var(--border-card);
-  border-radius: 9px;
-  background: #FFFFFF;
-  overflow: hidden;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+.error-detail-heading {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  padding: 2px 0 10px 0;
+  background: transparent;
+  border-bottom: 1px solid #EEF2F7;
 }
 
 .error-detail-row {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  min-height: 35px;
-  padding: 4px 14px;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
   border-bottom: 1px solid #EEF2F7;
-  font-size: 13.8px;
+  font-size: 12.5px;
 }
 
 .error-detail-row:last-child {
@@ -1413,30 +1740,34 @@ div[class*="st-key-ptab_inact_"] button p {
 }
 
 .error-detail-label {
-  width: 130px;
-  flex-shrink: 0;
-  color: var(--text-sec);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #526580;
   font-weight: 500;
+  font-size: 12.5px;
+  white-space: nowrap;
 }
 
 .error-detail-val {
-  flex: 1;
   color: var(--text-main);
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 13px;
   line-height: 1.3;
+  text-align: right;
 }
 
-/* Bộ chọn lỗi phụ trên trang đa lỗi (nhỏ gọn, không phá bố cục) */
+/* Bộ chọn lỗi phụ trên trang đa lỗi */
 .st-key-multi_defect_chips {
-  gap: 6px !important;
-  margin-top: -4px !important;
-  margin-bottom: -4px !important;
+  gap: 5px !important;
+  margin-top: 2px !important;
+  margin-bottom: 2px !important;
 }
 
 div[class*="st-key-mdchip_act_"] button {
   height: 24px !important;
   min-height: 24px !important;
-  padding: 0 9px !important;
+  padding: 0 8px !important;
   border-radius: 999px !important;
   background: #E8F2FF !important;
   border: 1px solid var(--primary) !important;
@@ -1444,7 +1775,7 @@ div[class*="st-key-mdchip_act_"] button {
 }
 
 div[class*="st-key-mdchip_act_"] button p {
-  font-size: 11.5px !important;
+  font-size: 11px !important;
   font-weight: 600 !important;
   color: var(--primary) !important;
 }
@@ -1452,7 +1783,7 @@ div[class*="st-key-mdchip_act_"] button p {
 div[class*="st-key-mdchip_inact_"] button {
   height: 24px !important;
   min-height: 24px !important;
-  padding: 0 9px !important;
+  padding: 0 8px !important;
   border-radius: 999px !important;
   background: #F5F7FA !important;
   border: 1px solid #E2E8F0 !important;
@@ -1460,14 +1791,15 @@ div[class*="st-key-mdchip_inact_"] button {
 }
 
 div[class*="st-key-mdchip_inact_"] button p {
-  font-size: 11.5px !important;
+  font-size: 11px !important;
   font-weight: 500 !important;
   color: var(--text-sec) !important;
 }
 
-/* Hàng 3 nút hành động: Chấp nhận | Bỏ qua | Sửa thủ công */
-.st-key-preview_actions_bar > div[data-testid="stHorizontalBlock"] {
-  gap: 9px !important;
+/* 3 nút hành động xếp dọc dưới Thông tin trang: Chấp nhận | Bỏ qua | Sửa thủ công */
+.st-key-preview_actions_bar > div[data-testid="stVerticalBlock"] {
+  gap: 6px !important;
+  margin-top: 4px !important;
 }
 
 .st-key-act_accept button {
@@ -1475,10 +1807,10 @@ div[class*="st-key-mdchip_inact_"] button p {
   color: #FFFFFF !important;
   border: 1px solid var(--primary) !important;
   border-radius: 8px !important;
-  height: 40px !important;
-  min-height: 40px !important;
+  height: 36px !important;
+  min-height: 36px !important;
   font-weight: 600 !important;
-  box-shadow: 0 2px 6px rgba(22, 119, 242, 0.20) !important;
+  box-shadow: 0 2px 5px rgba(8, 102, 232, 0.18) !important;
 }
 
 .st-key-act_accept button:hover:not(:disabled) {
@@ -1489,7 +1821,7 @@ div[class*="st-key-mdchip_inact_"] button p {
 .st-key-act_accept button p,
 .st-key-act_accept button span[data-testid="stIconMaterial"] {
   color: #FFFFFF !important;
-  font-size: 13.8px !important;
+  font-size: 13px !important;
   font-weight: 600 !important;
 }
 
@@ -1505,22 +1837,23 @@ div[class*="st-key-mdchip_inact_"] button p {
   color: var(--text-main) !important;
   border: 1px solid #DCE5F0 !important;
   border-radius: 8px !important;
-  height: 40px !important;
-  min-height: 40px !important;
+  height: 36px !important;
+  min-height: 36px !important;
   font-weight: 600 !important;
-  box-shadow: 0 1px 2px rgba(20, 33, 61, 0.03) !important;
+  box-shadow: none !important;
 }
 
 .st-key-act_skip button:hover:not(:disabled),
 .st-key-act_manual button:hover:not(:disabled) {
   background: #F6F9FD !important;
-  border-color: #B9CDE6 !important;
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
 }
 
 .st-key-act_skip button p,
 .st-key-act_manual button p {
   color: var(--text-main) !important;
-  font-size: 13.8px !important;
+  font-size: 13px !important;
   font-weight: 600 !important;
 }
 
@@ -1534,33 +1867,7 @@ div[class*="st-key-mdchip_inact_"] button p {
 }
 
 /* ============================================================================
-   6. FOOTER INFORMATION BAR (Height ~42px, nền xanh rất nhạt)
-   ============================================================================ */
-.footer-info-bar {
-  width: 100%;
-  min-height: 41px;
-  background: #EAF1FC;
-  border: 1px solid #DCE7F7;
-  border-radius: 8px;
-  padding: 8px 18px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  box-sizing: border-box;
-  color: #4E6582;
-  font-size: 13.5px;
-  font-weight: 400;
-}
-
-.footer-info-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* ============================================================================
-   7. MODAL DIALOGS & RESPONSIVE ADAPTATIONS (1366x768, Tablet, Mobile)
+   6. MODAL DIALOGS & RESPONSIVE ADAPTATIONS (1440px, 1280px, Tablet, Mobile)
    ============================================================================ */
 div[role="dialog"] {
   background: #FFFFFF !important;
@@ -1569,23 +1876,20 @@ div[role="dialog"] {
   border: 1px solid var(--border-card) !important;
 }
 
-@media (max-width: 1400px) {
-  .stMainBlockContainer,
-  div[data-testid="stAppViewBlockContainer"],
-  .block-container {
-    padding: 0 22px 12px 22px !important;
+@media (max-width: 1280px) {
+  section[data-testid="stSidebar"] {
+    width: 196px !important;
+    min-width: 196px !important;
+    max-width: 196px !important;
   }
-  .st-key-top_header_bar {
-    margin-left: -22px !important;
-    margin-right: -22px !important;
-    width: calc(100% + 44px) !important;
-    padding: 0 22px !important;
+  .upload-visual-overlay {
+    padding: 0 20px;
   }
 }
 
 @media (max-width: 1024px) {
-  .summary-cards-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .upload-illust-col {
+    display: none !important;
   }
   .st-key-main_two_col_row > div[data-testid="stHorizontalBlock"] {
     flex-direction: column !important;
@@ -1600,41 +1904,17 @@ div[role="dialog"] {
   .stMainBlockContainer,
   div[data-testid="stAppViewBlockContainer"],
   .block-container {
-    padding: 0 14px 14px 14px !important;
+    padding: 0 10px 12px 10px !important;
   }
   .st-key-top_header_bar {
-    margin-left: -14px !important;
-    margin-right: -14px !important;
-    width: calc(100% + 28px) !important;
-    padding: 12px 14px !important;
+    margin-left: -10px !important;
+    margin-right: -10px !important;
+    width: calc(100% + 20px) !important;
+    padding: 8px 12px !important;
     height: auto !important;
-    min-height: auto !important;
+    min-height: 56px !important;
   }
-  .hdr-title { font-size: 18px !important; }
-  .hdr-subtitle { font-size: 13px !important; }
-  .st-key-file_proc_col div[data-testid="stHorizontalBlock"] {
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    align-items: flex-start !important;
-  }
-  .st-key-file_proc_col div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:first-child {
-    flex: 1 1 auto !important;
-    width: auto !important;
-  }
-  .st-key-file_proc_col div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:last-child {
-    flex: 0 0 36px !important;
-    width: 36px !important;
-  }
-  .summary-cards-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-  .summary-stat-card {
-    height: 86px;
-    padding: 0 14px;
-    gap: 12px;
-  }
-  .summary-stat-val { font-size: 24px; }
+  .hdr-title { font-size: 16px !important; }
   .st-key-error_table_wrapper,
   .st-key-secret_table_wrapper {
     overflow-x: auto !important;
@@ -1649,17 +1929,6 @@ div[role="dialog"] {
     flex-wrap: nowrap !important;
     min-width: 440px !important;
   }
-  .st-key-hdr_mode_switcher {
-    flex-wrap: wrap !important;
-  }
-  .st-key-error_table_wrapper div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
-    min-width: 72px !important;
-  }
-  .footer-info-bar {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-  }
 }
 </style>
 """
@@ -1673,3 +1942,18 @@ def clean_html(raw: str) -> str:
 def inject_dashboard_styles() -> None:
     """Tiêm CSS có phạm vi rõ ràng cho Dashboard PDF Scan Quality Inspector."""
     st.markdown(DASHBOARD_CSS, unsafe_allow_html=True)
+    if st.session_state.get("sidebar_collapsed", False):
+        st.markdown(
+            """
+            <style id="pdf-inspector-sidebar-collapsed">
+            section[data-testid="stSidebar"] {
+              margin-left: -212px !important;
+              width: 0px !important;
+              min-width: 0px !important;
+              max-width: 0px !important;
+              overflow: hidden !important;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
